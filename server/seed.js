@@ -1,86 +1,100 @@
 const mongoose = require('mongoose');
 const Video = require('./models/Video');
-const User = require('./models/User');
-require('dotenv').config();
+const Utente = require('./models/Utente');
+const Commento = require('./models/Commento');
 
-// Dati di prova
-const sampleVideo = {
-  title: "Introduction to Business English",
-  description: "Impara le basi per presentarti in un contesto lavorativo.",
-  url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", // Placeholder
-  cover: "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
-  durationSeconds: 120,
-  difficultyLevel: "A2",
-  segments: [
-    {
-      startTimeMs: 0,
-      endTimeMs: 5000,
-      textEnglish: "Good morning everyone, and welcome to the meeting.",
-      textItalian: "Buongiorno a tutti e benvenuti alla riunione.",
-      insights: [
+// Stringa di connessione (assicurati che sia la stessa di index.js)
+const MONGO_URI = 'mongodb://127.0.0.1:27017/kineo'; 
+
+const seedDatabase = async () => {
+  try {
+    // 1. Connessione al DB
+    await mongoose.connect(MONGO_URI);
+    console.log('✅ Connesso a MongoDB');
+
+    // 2. Pulizia: Cancelliamo i vecchi dati per partire puliti
+    await Video.deleteMany({});
+    await Utente.deleteMany({});
+    await Commento.deleteMany({});
+    console.log('🗑️ Vecchi dati cancellati');
+
+    // 3. Creazione di un VIDEO con SEGMENTI e APPROFONDIMENTI
+    const video1 = await Video.create({
+      titolo: "Learn English with Friends",
+      copertina: "friends.jpg",
+      descrizione: "Una scena divertente dalla serie TV.",
+      url: "https://youtube.com/watch?v=12345",
+      durataSecondi: 120,
+      livelloDifficolta: "B1",
+      segmenti: [
         {
-          token: "Good morning",
-          type: "Idioma",
-          meaning: "Saluto formale usato al mattino"
+          startTime: 0,
+          endTime: 5000,
+          testoInglese: "How you doin'?",
+          testoItaliano: "Come va?",
+          approfondimenti: [
+            {
+              token: "How you doin'",
+              tipo: "Idioma",
+              significato: "Tipico saluto informale di Joey."
+            }
+          ]
         },
         {
-          token: "meeting",
-          type: "Vocabolo",
-          meaning: "Riunione di lavoro"
+          startTime: 5000,
+          endTime: 10000,
+          testoInglese: "I am going to give up on this.",
+          testoItaliano: "Ci rinuncerò.",
+          approfondimenti: [
+            {
+              token: "give up",
+              tipo: "Phrasal Verb",
+              significato: "Arrendersi o smettere di fare qualcosa."
+            }
+          ]
         }
       ]
-    },
-    {
-      startTimeMs: 5001,
-      endTimeMs: 10000,
-      textEnglish: "Today we are going to discuss the new project.",
-      textItalian: "Oggi discuteremo del nuovo progetto.",
-      insights: [
+    });
+    console.log('🎬 Video creato con successo');
+
+    // --- PUNTO CRITICO: Recuperiamo l'ID di un approfondimento specifico ---
+    // Vogliamo simulare che l'utente salvi "give up"
+    const segmentoTarget = video1.segmenti[1]; 
+    const approfondimentoTarget = segmentoTarget.approfondimenti[0]; // "give up"
+    const idApprofondimentoReale = approfondimentoTarget._id;
+
+    // 4. Creazione di un UTENTE con VOCABOLARIO collegato
+    const studente = await Utente.create({
+      nome: "Luca",
+      cognome: "Rossi",
+      email: "luca@test.com",
+      password: "passwordSegreta123", // In futuro la cripteremo
+      ruolo: "Studente",
+      vocabolario: [
         {
-          token: "discuss",
-          type: "Vocabolo",
-          meaning: "Discutere/Esaminare"
+          approfondimentoId: idApprofondimentoReale, // <--- RELAZIONE "ORIGINA" (Foreign Key)
+          notePersonali: "Molto usato nel parlato",
+          stato: "Da studiare"
         }
       ]
-    }
-  ]
-};
+    });
+    console.log('👤 Utente creato con parola salvata nel vocabolario');
 
-const sampleUser = {
-  name: "Mario",
-  surname: "Rossi",
-  email: "mario.rossi@example.com",
-  password: "password123", // In produzione andrebbe criptata
-  role: "Studente",
-  vocabulary: [
-    {
-      originalWord: "meeting",
-      meaning: "Riunione",
-      status: "Da studiare"
-    }
-  ]
-};
+    // 5. Creazione di un COMMENTO (Relazione Utente -> Video)
+    await Commento.create({
+      utenteId: studente._id,
+      videoId: video1._id,
+      testo: "Video utilissimo, grazie!"
+    });
+    console.log('💬 Commento inserito');
 
-// Funzione di caricamento
-const seedDB = async () => {
-  try {
-    await mongoose.connect('mongodb://127.0.0.1:27017/kineo');
-    console.log('🔌 Connesso al DB');
+    console.log('🎉 TUTTO FUNZIONA! Database popolato correttamente.');
+    process.exit(0);
 
-    // Pulisce tutto il DB prima di inserire
-    await Video.deleteMany({});
-    await User.deleteMany({});
-    console.log('🗑️  Vecchi dati eliminati');
-
-    // Inserisce i nuovi dati
-    await Video.create(sampleVideo);
-    await User.create(sampleUser);
-    console.log('✅ Dati di prova inseriti con successo!');
-
-    mongoose.connection.close();
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error('❌ Errore durante il seed:', error);
+    process.exit(1);
   }
 };
 
-seedDB();
+seedDatabase();
