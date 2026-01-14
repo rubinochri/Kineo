@@ -55,6 +55,36 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
+//Codice aggiunto ora
+// POST /api/videos -> Crea un nuovo video nel DB
+app.post('/api/videos', async (req, res) => {
+  try {
+    // Estraiamo i dati dal corpo della richiesta
+    const { titolo, url, livelloDifficolta, copertina, descrizione } = req.body;
+
+    // Validazione base (i campi required dello Schema)
+    if (!titolo || !url || !livelloDifficolta) {
+      return res.status(400).json({ message: "Titolo, URL e Livello Difficoltà sono obbligatori." });
+    }
+
+    // Creazione oggetto Video
+    // Nota: segmenti è inizializzato come array vuoto se non passato
+    const nuovoVideo = new Video({
+      titolo,
+      url,
+      livelloDifficolta,
+      copertina,
+      descrizione,
+      segmenti: [] // Per ora salviamo senza sottotitoli complessi per testare il video
+    });
+
+    const videoSalvato = await nuovoVideo.save();
+    res.status(201).json(videoSalvato);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 // --- UTENTI (REGISTRAZIONE) ---
 
 // POST /api/register -> Riceve dati dal form e crea un nuovo utente
