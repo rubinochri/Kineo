@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 function TestLogin() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -23,9 +25,17 @@ function TestLogin() {
       // Chiamata al backend
       const res = await axios.post('http://localhost:5001/api/login', formData);
       
-      // Successo
+      // Successo - salva i dati nel localStorage
       setMessage(`✅ ${res.data.msg}`);
-      setUserData(res.data.user); 
+      setUserData(res.data.user);
+      
+      // Salva i dati dell'utente nel localStorage per accesso a Dashboard
+      localStorage.setItem('userData', JSON.stringify(res.data.user));
+      
+      // Reindirizza alla dashboard dopo 1.5 secondi
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
     } catch (err) {
       // Errore
       console.error(err);
@@ -86,6 +96,9 @@ function TestLogin() {
             <li><strong>Email:</strong> {userData.email}</li>
             <li><strong>Ruolo:</strong> {userData.ruolo}</li>
           </ul>
+          <p style={{ margin: '15px 0 0 0', fontSize: '0.9em', color: '#666' }}>
+            Reindirizzamento alla dashboard in corso... oppure <a href="/dashboard" style={{ color: '#007bff', textDecoration: 'none' }}>clicca qui</a>
+          </p>
         </div>
       )}
     </div>
