@@ -195,6 +195,80 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// GET /api/user/:id (Ottiene i dati completi dell'utente)
+app.get('/api/user/:id', async (req, res) => {
+  try {
+    const user = await Utente.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ msg: "Utente non trovato." });
+    }
+
+    res.json({
+      id: user._id,
+      nome: user.nome,
+      cognome: user.cognome,
+      username: user.username,
+      email: user.email,
+      ruolo: user.ruolo,
+      dataRegistrazione: user.dataRegistrazione
+    });
+
+  } catch (err) {
+    console.error("Errore GET user:", err);
+    res.status(500).json({ msg: "Errore server." });
+  }
+});
+
+// PUT /api/user/:id (Aggiorna i dati dell'utente)
+app.put('/api/user/:id', async (req, res) => {
+  try {
+    const { nome, cognome, username, email } = req.body;
+
+    // Validazione input
+    if (!nome || !cognome || !username || !email) {
+      return res.status(400).json({ msg: "Tutti i campi sono obbligatori." });
+    }
+
+    // Verifica che email non sia già usata da un altro utente
+    const emailEsistente = await Utente.findOne({ 
+      email: email,
+      _id: { $ne: req.params.id } // Esclude l'utente corrente
+    });
+
+    if (emailEsistente) {
+      return res.status(400).json({ msg: "Email già registrata da un altro utente." });
+    }
+
+    // Aggiorna l'utente
+    const userAggiornato = await Utente.findByIdAndUpdate(
+      req.params.id,
+      { nome, cognome, username, email },
+      { new: true, runValidators: true }
+    );
+
+    if (!userAggiornato) {
+      return res.status(404).json({ msg: "Utente non trovato." });
+    }
+
+    res.json({
+      msg: "Dati aggiornati con successo!",
+      user: {
+        id: userAggiornato._id,
+        nome: userAggiornato.nome,
+        cognome: userAggiornato.cognome,
+        username: userAggiornato.username,
+        email: userAggiornato.email,
+        ruolo: userAggiornato.ruolo
+      }
+    });
+
+  } catch (err) {
+    console.error("Errore PUT user:", err);
+    res.status(500).json({ msg: "Errore server." });
+  }
+});
+
 // 6. AVVIO DEL SERVER
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {

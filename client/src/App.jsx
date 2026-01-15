@@ -4,7 +4,8 @@ import ReactPlayer from 'react-player';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import TestRegister from './TestRegister';
 import TestVideo from './TestVideo'; 
-import TestLogin from './TestLogin'; // <--- NUOVO IMPORT
+import TestLogin from './TestLogin';
+import Dashboard from './Dashboard';
 
 // --- COMPONENTE VIDEOCARD ---
 function VideoCard({ video }) {
@@ -315,6 +316,7 @@ function App() {
         <Route path="/test" element={<TestRegister />} />
         <Route path="/login" element={<TestLogin />} /> 
         <Route path="/test-video" element={<TestVideo />} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </Router>
   );
