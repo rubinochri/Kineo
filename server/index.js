@@ -8,7 +8,6 @@ require('dotenv').config();
 // 2. IMPORTAZIONE DEI MODELLI (DATABASE)
 const Video = require('./models/Video');
 const Utente = require('./models/Utente');
-// NUOVO: Importiamo il modello del Dizionario
 const Dizionario = require('./models/Dizionario');
 
 // Inizializziamo l'applicazione Express
@@ -28,27 +27,18 @@ mongoose.connect(process.env.MONGODB_URI)
 // ---------------------------------------------------------
 
 // --- TRADUZIONE (DIZIONARIO LOCALE) --- 
-// Questa rotta sostituisce quella di Google API
 app.post('/api/translate', async (req, res) => {
   try {
     const { text } = req.body;
     
-    // Validazione input
     if (!text) return res.status(400).json({ message: "Testo mancante" });
 
-    // Pulizia del testo: togliamo spazi e rendiamo minuscolo
-    // Es. "  Bird  " diventa "bird" per trovarlo nel DB
     const cleanWord = text.trim().toLowerCase();
-
-    // Cerchiamo nel nostro Dizionario locale
     const entry = await Dizionario.findOne({ word: cleanWord });
 
     if (entry) {
-      // TROVATO: Restituiamo la traduzione dal DB
       res.json({ translation: entry.translation });
     } else {
-      // NON TROVATO: Messaggio standard (senza errori server)
-      // Questo simula una risposta "vuota" gestita
       res.json({ translation: "Traduzione non presente nel dizionario demo." });
     }
 
@@ -82,7 +72,6 @@ app.patch('/api/videos/:id/segmenti', async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
-
 
 // GET /api/videos
 app.get('/api/videos', async (req, res) => {
@@ -130,7 +119,7 @@ app.post('/api/videos', async (req, res) => {
   }
 });
 
-// --- UTENTI (REGISTRAZIONE) ---
+// --- UTENTI (AUTH) ---
 
 // POST /api/register
 app.post('/api/register', async (req, res) => {
@@ -138,7 +127,7 @@ app.post('/api/register', async (req, res) => {
     const { nome, cognome, username, email, password } = req.body;
 
     if (!nome || !cognome || !username || !email || !password) {
-      return res.status(400).json({ msg: "Tutti i campi sono obbligatori (inclusi Nome e Cognome)." });
+      return res.status(400).json({ msg: "Tutti i campi sono obbligatori." });
     }
 
     const utenteEsistente = await Utente.findOne({ email });
@@ -163,6 +152,46 @@ app.post('/api/register', async (req, res) => {
   } catch (err) {
     console.error("Errore server:", err);
     res.status(500).json({ msg: "Errore interno del server." });
+  }
+});
+
+// POST /api/login (NUOVA ROTTA)
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // 1. Validazione input
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Inserisci email e password." });
+    }
+
+    // 2. Verifica esistenza utente
+    const user = await Utente.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ msg: "Credenziali non valide." });
+    }
+
+    // 3. Verifica password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ msg: "Credenziali non valide." });
+    }
+
+    // 4. Login riuscito (Restituisce dati utente)
+    res.json({
+      msg: "Login effettuato con successo!",
+      user: {
+        id: user._id,
+        nome: user.nome,
+        username: user.username,
+        email: user.email,
+        ruolo: user.ruolo
+      }
+    });
+
+  } catch (err) {
+    console.error("Errore Login:", err);
+    res.status(500).json({ msg: "Errore server." });
   }
 });
 

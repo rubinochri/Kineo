@@ -4,6 +4,7 @@ import ReactPlayer from 'react-player';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import TestRegister from './TestRegister';
 import TestVideo from './TestVideo'; 
+import TestLogin from './TestLogin'; // <--- NUOVO IMPORT
 
 // --- COMPONENTE VIDEOCARD ---
 function VideoCard({ video }) {
@@ -294,7 +295,8 @@ function Home() {
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <h1>Kineo Player</h1>
         <nav style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
-            <Link to="/test" style={btnStyle}>Test Registrazione</Link>
+            <Link to="/test" style={btnStyle}>Test Reg.</Link>
+            <Link to="/login" style={{...btnStyle, background: '#6c757d'}}>Test Login</Link>
             <Link to="/test-video" style={{...btnStyle, background: '#28a745'}}>Test Carica Video</Link>
         </nav>
       </div>
@@ -311,6 +313,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/test" element={<TestRegister />} />
+        <Route path="/login" element={<TestLogin />} /> 
         <Route path="/test-video" element={<TestVideo />} />
       </Routes>
     </Router>
