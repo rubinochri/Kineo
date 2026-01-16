@@ -328,21 +328,28 @@ export default App;
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './Home';
 import Register from './Register';
-import Login from './Login'; // <-- Nuovo import
+import Login from './Login';
 import Dashboard from './Dashboard';
 import TestVideo from './TestVideo'; 
+import VideoLibrary from './VideoLibrary'; // <-- NUOVO IMPORT
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Landing Page (Pubblica) */}
         <Route path="/" element={<Home />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} /> {/* <-- Nuova rotta */}
-        <Route path="/dashboard" element={<Dashboard />} />
         
-        {/* Rotte di utilità/test rimaste */}
-        <Route path="/test-video" element={<TestVideo />} />
+        {/* Auth */}
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        
+        {/* Area Privata (Studente) */}
+        <Route path="/videos" element={<VideoLibrary />} /> {/* <-- NUOVA HOME UTENTE */}
+        <Route path="/dashboard" element={<Dashboard />} /> {/* Profilo */}
+        
+        {/* Area Admin (Caricamento Video) */}
+        <Route path="/testvideo" element={<TestVideo />} />
       </Routes>
     </Router>
   );

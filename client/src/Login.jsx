@@ -17,7 +17,8 @@ export default function Login() {
       const res = await axios.post('http://localhost:5001/api/login', formData);
       setSuccess('Accesso effettuato! Reindirizzamento...');
       localStorage.setItem('userData', JSON.stringify(res.data.user));
-      setTimeout(() => navigate('/dashboard'), 1500);
+      // MODIFICA: Reindirizzamento a /testvideo invece di /dashboard
+      setTimeout(() => navigate('/videos'), 1500);
     } catch (err) {
       setError(err.response?.data?.msg || 'Errore durante l\'accesso');
     }

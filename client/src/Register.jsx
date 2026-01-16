@@ -26,11 +26,25 @@ export default function Register() {
     setSuccess('');
     
     try {
+      // 1. REGISTRAZIONE UTENTE
       await axios.post('http://localhost:5001/api/register', formData);
-      setSuccess('Account creato con successo! Reindirizzamento al login...');
+      
+      // 2. AUTO-LOGIN IMMEDIATO
+      // Usiamo le stesse credenziali appena inserite per ottenere il token/sessione
+      const loginRes = await axios.post('http://localhost:5001/api/login', {
+        email: formData.email,
+        password: formData.password
+      });
+
+      setSuccess('Account creato! Accesso automatico in corso...');
+      
+      // 3. SALVATAGGIO SESSIONE
+      localStorage.setItem('userData', JSON.stringify(loginRes.data.user));
+
+      // 4. REINDIRIZZAMENTO ALLA LIBRERIA VIDEO
       setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+        navigate('/videos');
+      }, 1500);
 
     } catch (err) {
       console.error(err);
