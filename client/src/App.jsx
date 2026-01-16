@@ -325,19 +325,47 @@ function App() {
 export default App;
 */
 
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './Home';
 import Register from './Register';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import TestVideo from './TestVideo'; 
-import VideoLibrary from './VideoLibrary'; // <-- NUOVO IMPORT
+import VideoLibrary from './VideoLibrary'; 
+import DictionaryPage from './DictionaryPage'; // <--- NUOVO FILE (Pagina Intera)
 
 function App() {
+  // --- STATO DATI (Rimane qui per non perdere le parole) ---
+  const [savedWords, setSavedWords] = useState(() => {
+    const saved = localStorage.getItem('kineo_saved_words');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Salva su LocalStorage quando cambia
+  useEffect(() => {
+    localStorage.setItem('kineo_saved_words', JSON.stringify(savedWords));
+  }, [savedWords]);
+
+  // Funzione Aggiungi/Rimuovi
+  const toggleSaveWord = (wordData) => {
+    const exists = savedWords.find(w => w.original.toLowerCase() === wordData.original.toLowerCase());
+    if (exists) {
+      setSavedWords(prev => prev.filter(w => w.original.toLowerCase() !== wordData.original.toLowerCase()));
+    } else {
+      setSavedWords(prev => [{ ...wordData, id: Date.now(), date: new Date() }, ...prev]);
+    }
+  };
+
+  // Funzione Rimuovi specifica (per la pagina dizionario)
+  const removeWord = (id) => {
+    setSavedWords(prev => prev.filter(w => w.id !== id));
+  };
+
   return (
     <Router>
       <Routes>
-        {/* Landing Page (Pubblica) */}
+        {/* Landing Page (Pubblica) - NIENTE PIÙ TASTO DIZIONARIO QUI */}
         <Route path="/" element={<Home />} />
         
         {/* Auth */}
@@ -345,10 +373,16 @@ function App() {
         <Route path="/login" element={<Login />} />
         
         {/* Area Privata (Studente) */}
-        <Route path="/videos" element={<VideoLibrary />} /> {/* <-- NUOVA HOME UTENTE */}
-        <Route path="/dashboard" element={<Dashboard />} /> {/* Profilo */}
+        <Route path="/videos" element={
+            <VideoLibrary savedWords={savedWords} onToggleSave={toggleSaveWord} />
+        } />
         
-        {/* Area Admin (Caricamento Video) */}
+        {/* --- NUOVA PAGINA DIZIONARIO DEDICATA --- */}
+        <Route path="/dizionario" element={
+            <DictionaryPage savedWords={savedWords} onRemoveWord={removeWord} />
+        } />
+
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/testvideo" element={<TestVideo />} />
       </Routes>
     </Router>

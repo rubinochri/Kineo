@@ -22,7 +22,7 @@ function Home() {
         </Link>
       </div>
 
-      {/* --- NUOVO BOTTONE ADMIN --- */}
+      {/* --- BOTTONE ADMIN (Era già nel tuo codice originale) --- */}
       <div className="animate-enter delay-3" style={{ marginTop: '40px' }}>
         <Link to="/testvideo" 
           style={{ 

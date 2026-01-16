@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import axios from 'axios';
 import ReactPlayer from 'react-player';
 
-function VideoCard({ video }) {
+// 1. MODIFICA: Aggiungo savedWords e onToggleSave alle props
+function VideoCard({ video, savedWords, onToggleSave }) {
   const playerRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
 
@@ -17,6 +18,12 @@ function VideoCard({ video }) {
     } else {
       playerRef.current.seekTo(timeToSeek, 'seconds');
     }
+  };
+
+  // 2. NUOVA FUNZIONE: Controlla se la parola è già nel dizionario (per colorare la stella)
+  const isWordSaved = (text) => {
+    if (!savedWords || !text) return false;
+    return savedWords.some(w => w.original.toLowerCase() === text.toLowerCase());
   };
 
   const fetchTranslation = async (text, type) => {
@@ -113,17 +120,46 @@ function VideoCard({ video }) {
   return (
     <div style={{ marginBottom: '60px', border: '1px solid #ddd', padding: '20px', borderRadius: '8px', position: 'relative' }}>
       <h2>{video.titolo} <span style={{fontSize:'0.6em', background:'#eee', padding:'2px 5px', marginLeft: '10px', borderRadius:'4px'}}>{video.livelloDifficolta}</span></h2>
+      
       {tooltip && (
         <div style={{ position: 'fixed', bottom: '20px', right: '20px', width: '300px', backgroundColor: 'white', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', borderRadius: '10px', padding: '20px', borderLeft: `6px solid ${tooltip.type === 'DB' ? '#fbc02d' : '#007bff'}`, zIndex: 1000, fontFamily: 'Arial, sans-serif', animation: 'slideIn 0.3s ease-out' }}>
+          
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
             <span style={{ textTransform:'uppercase', fontSize:'0.7em', fontWeight:'bold', letterSpacing:'1px', color: tooltip.type === 'DB' ? '#f9a825' : '#007bff', backgroundColor: tooltip.type === 'DB' ? '#fff9c4' : '#e3f2fd', padding: '2px 8px', borderRadius: '10px' }}>{tooltip.meta}</span>
             <button onClick={() => setTooltip(null)} style={{border:'none', background:'transparent', cursor:'pointer', fontSize:'1.5em', lineHeight: '0.8', color: '#999'}}>&times;</button>
           </div>
-          <h3 style={{margin:'0 0 8px 0', color:'#333', fontSize: '1.3em'}}>"{tooltip.text}"</h3>
-          <p style={{margin:0, color:'#555', fontSize: '1em', lineHeight:'1.4'}}>{tooltip.translation}</p>
+          
+          {/* 3. MODIFICA: Titolo della parola + Bottone Stella */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+             <h3 style={{margin:'0', color:'#333', fontSize: '1.3em'}}>"{tooltip.text}"</h3>
+             
+             <button 
+                onClick={() => onToggleSave({ 
+                    original: tooltip.text, 
+                    translation: tooltip.translation, 
+                    type: tooltip.meta 
+                })}
+                style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer', 
+                    fontSize: '1.8em',
+                    // Se la parola è salvata diventa GIALLA, altrimenti GRIGIA
+                    color: isWordSaved(tooltip.text) ? '#fbc02d' : '#e0e0e0',
+                    transition: 'color 0.2s'
+                }}
+                title={isWordSaved(tooltip.text) ? "Rimuovi dal dizionario" : "Salva nel dizionario"}
+             >
+                {/* Mostra stella piena o vuota */}
+                {isWordSaved(tooltip.text) ? '★' : '☆'}
+             </button>
+          </div>
+
+          <p style={{margin:'5px 0 0', color:'#555', fontSize: '1em', lineHeight:'1.4'}}>{tooltip.translation}</p>
           {tooltip.type !== 'DB' && (<small style={{display:'block', marginTop:'10px', color:'#ccc', fontSize:'0.7em'}}>*Da Dizionario Locale</small>)}
         </div>
       )}
+
       <div style={{ width: '100%', maxWidth: '800px', margin: '20px 0', backgroundColor: '#000', borderRadius: '8px', overflow: 'hidden' }}>
           {video.url ? (
               isDirectFile(video.url) ? (
