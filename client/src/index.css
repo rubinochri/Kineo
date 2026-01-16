@@ -1,68 +1,198 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* --- PALETTE COLORI --- */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  
+  /* Sfondo base */
+  --bg-color: #ffffff;
+  
+  /* --- SETUP --- */
+  --radius: 16px;
+  /* Font Stack Apple Style */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --shadow-hover: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 10px -2px rgba(0, 0, 0, 0.05);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  background-color: var(--bg-color);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  overflow-x: hidden;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* --- NUOVO SFONDO CON SFERE SFOCATE --- */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(150px); /* Sfocatura molto ampia per l'effetto luce */
+  opacity: 0.55;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+/* Sfera Blu in alto a sinistra */
+body::before {
+  width: 60vw;
+  height: 60vw;
+  background: #3b82f6; /* Blu */
+  top: -20%;
+  left: -20%;
+}
+
+/* Sfera Viola in basso a destra */
+body::after {
+  width: 50vw;
+  height: 50vw;
+  background: #a855f7; /* Viola */
+  bottom: -15%;
+  right: -15%;
+}
+
+
+/* --- ANIMAZIONI ENTRATA (Solo per il contenuto) --- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); scale: 0.98; }
+  to { opacity: 1; transform: translateY(0); scale: 1; }
+}
+
+.animate-enter {
+  animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.delay-1 { animation-delay: 0.1s; opacity: 0; animation-fill-mode: forwards; }
+.delay-2 { animation-delay: 0.2s; opacity: 0; animation-fill-mode: forwards; }
+
+/* --- LAYOUT --- */
+.hero-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  text-align: center;
+}
+
+/* --- TITOLI --- */
+.title-gradient {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #111827;
+  /* Gradiente leggermente più scuro per contrasto */
+  background: linear-gradient(180deg, #111827 0%, #374151 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+  line-height: 1.05;
+  padding-right: 5px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.title-xl { font-size: 5.5rem; }
+.title-lg { font-size: 2.8rem; margin-bottom: 15px; }
+
+.subtitle {
+  font-size: 1.5rem;
+  color: #6e6e73;
+  max-width: 600px;
+  line-height: 1.5;
+  margin-bottom: 3.5rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* --- BOTTONI --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 40px;
+  border-radius: 999px;
+  font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  text-decoration: none;
+  font-size: 1.1rem;
+  border: none;
+  letter-spacing: 0;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.btn-primary {
+  background: #2563eb;
+  color: white;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+  transform: scale(1.02);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+}
+
+.btn-secondary {
+  background-color: rgba(255, 255, 255, 0.8);
+  color: #1d1d1f;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1); 
+}
+
+.btn-secondary:hover {
+  background-color: #fff;
+  transform: scale(1.02);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+/* --- CARD & INPUTS --- */
+.card-glass {
+  /* Aumentata la trasparenza e aggiunto backdrop-filter per l'effetto vetro */
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 50px;
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 480px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 16px 20px;
+  font-size: 1.05rem;
+  border: 1px solid #d2d2d7;
+  border-radius: 12px;
+  margin-bottom: 0;
+  transition: all 0.2s ease;
+  background-color: #ffffff;
+  color: #1d1d1f;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+.form-input::placeholder { color: #86868b; }
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #1d1d1f;
+  font-size: 0.95rem;
+  margin-left: 4px;
 }

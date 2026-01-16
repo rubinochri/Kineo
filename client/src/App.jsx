@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+/* import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import ReactPlayer from 'react-player';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
@@ -171,7 +171,7 @@ function VideoCard({ video }) {
         </span>
       </h2>
 
-      {/* --- TOOLTIP UNIFICATO --- */}
+      {/* --- TOOLTIP UNIFICATO --- } /*
       {tooltip && (
         <div style={{
           position: 'fixed',
@@ -214,7 +214,7 @@ function VideoCard({ video }) {
         </div>
       )}
 
-      {/* PLAYER */}
+      {/* PLAYER } /*
       <div style={{ width: '100%', maxWidth: '800px', margin: '20px 0', backgroundColor: '#000', borderRadius: '8px', overflow: 'hidden' }}>
           {video.url ? (
               isDirectFile(video.url) ? (
@@ -236,8 +236,8 @@ function VideoCard({ video }) {
 
       {video.descrizione && <p><i>{video.descrizione}</i></p>}
 
-      {/* --- SOTTOTITOLI INTERATTIVI --- */}
-      {video.segmenti && video.segmenti.length > 0 && (
+      {/* --- SOTTOTITOLI INTERATTIVI --- } /*
+       {video.segmenti && video.segmenti.length > 0 && (
           <div 
             onMouseUp={handleTextSelection} 
             style={{ height: '300px', overflowY: 'scroll', border: '1px solid #ccc', padding: '15px', marginTop: '10px', backgroundColor: '#f9f9f9', borderRadius: '4px' }}
@@ -317,6 +317,32 @@ function App() {
         <Route path="/login" element={<TestLogin />} /> 
         <Route path="/test-video" element={<TestVideo />} />
         <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
+*/
+
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Home from './Home';
+import Register from './Register';
+import Login from './Login'; // <-- Nuovo import
+import Dashboard from './Dashboard';
+import TestVideo from './TestVideo'; 
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} /> {/* <-- Nuova rotta */}
+        <Route path="/dashboard" element={<Dashboard />} />
+        
+        {/* Rotte di utilità/test rimaste */}
+        <Route path="/test-video" element={<TestVideo />} />
       </Routes>
     </Router>
   );
