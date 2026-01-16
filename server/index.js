@@ -9,6 +9,7 @@ require('dotenv').config();
 const Video = require('./models/Video');
 const Utente = require('./models/Utente');
 const Dizionario = require('./models/Dizionario');
+const Commento = require('./models/Commento');
 
 // Inizializziamo l'applicazione Express
 const app = express();
@@ -266,6 +267,103 @@ app.put('/api/user/:id', async (req, res) => {
   } catch (err) {
     console.error("Errore PUT user:", err);
     res.status(500).json({ msg: "Errore server." });
+  }
+});
+
+// --- COMMENTI ---
+
+// GET /api/commenti/video/:videoId (Ottiene tutti i commenti di un video con risposte)
+app.get('/api/commenti/video/:videoId', async (req, res) => {
+  try {
+    const commenti = await Commento.find({ videoId: req.params.videoId, parentCommentoId: null })
+      .populate('utenteId', 'nome username')
+      .populate('like', '_id')
+      .sort({ dataCreazione: -1 });
+    
+    // Carica le risposte per ogni commento
+    const commentiConRisposte = await Promise.all(
+      commenti.map(async (commento) => {
+        const risposte = await Commento.find({ parentCommentoId: commento._id })
+          .populate('utenteId', 'nome username')
+          .populate('like', '_id')
+          .sort({ dataCreazione: 1 });
+        
+        return {
+          ...commento.toObject(),
+          risposte: risposte
+        };
+      })
+    );
+    
+    res.json(commentiConRisposte);
+  } catch (err) {
+    console.error("Errore GET commenti:", err);
+    res.status(500).json({ message: "Errore durante il caricamento dei commenti." });
+  }
+});
+
+// POST /api/commenti (Crea un nuovo commento o risposta)
+app.post('/api/commenti', async (req, res) => {
+  try {
+    const { utenteId, videoId, testo, parentCommentoId } = req.body;
+
+    if (!utenteId || !videoId || !testo) {
+      return res.status(400).json({ message: "utenteId, videoId e testo sono obbligatori." });
+    }
+
+    const nuovoCommento = new Commento({
+      utenteId,
+      videoId,
+      testo: testo.trim(),
+      parentCommentoId: parentCommentoId || null,
+      like: []
+    });
+
+    const commentoSalvato = await nuovoCommento.save();
+    
+    // Populate dei dati utente per la risposta
+    await commentoSalvato.populate('utenteId', 'nome username');
+    
+    res.status(201).json(commentoSalvato);
+  } catch (err) {
+    console.error("Errore POST commenti:", err);
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// PUT /api/commenti/:id/like (Aggiunge/Rimuove un like)
+app.put('/api/commenti/:id/like', async (req, res) => {
+  try {
+    const { utenteId } = req.body;
+
+    if (!utenteId) {
+      return res.status(400).json({ message: "utenteId è obbligatorio." });
+    }
+
+    const commento = await Commento.findById(req.params.id);
+    if (!commento) {
+      return res.status(404).json({ message: "Commento non trovato." });
+    }
+
+    // Controlla se l'utente ha già messo like
+    const likeIndex = commento.like.indexOf(utenteId);
+    
+    if (likeIndex === -1) {
+      // Aggiungi like
+      commento.like.push(utenteId);
+    } else {
+      // Rimuovi like
+      commento.like.splice(likeIndex, 1);
+    }
+
+    const commentoAggiornato = await commento.save();
+    await commentoAggiornato.populate('utenteId', 'nome username');
+    await commentoAggiornato.populate('like', '_id');
+
+    res.json(commentoAggiornato);
+  } catch (err) {
+    console.error("Errore PUT like commento:", err);
+    res.status(400).json({ message: err.message });
   }
 });
 
