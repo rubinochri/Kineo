@@ -326,58 +326,107 @@ export default App;
 */
 
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import axios from 'axios'; 
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'; // 1. Aggiunto useLocation
 import Home from './Home';
 import Register from './Register';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import TestVideo from './TestVideo'; 
 import VideoLibrary from './VideoLibrary'; 
-import DictionaryPage from './DictionaryPage'; // <--- NUOVO FILE (Pagina Intera)
+import DictionaryPage from './DictionaryPage'; 
 
-function App() {
-  // --- STATO DATI (Rimane qui per non perdere le parole) ---
-  const [savedWords, setSavedWords] = useState(() => {
-    const saved = localStorage.getItem('kineo_saved_words');
-    return saved ? JSON.parse(saved) : [];
-  });
+// --- COMPONENTE INTERNO: GESTISCE LA LOGICA ---
+// Questo componente sta "dentro" il Router, quindi può accorgersi dei cambi pagina
+function AppContent() {
+  const [savedWords, setSavedWords] = useState([]);
+  const [userId, setUserId] = useState(null);
+  
+  // 2. Questo hook ci dice su che pagina siamo (es. "/login", "/videos")
+  const location = useLocation(); 
 
-  // Salva su LocalStorage quando cambia
+  // 3. EFFETTO: Esegue ogni volta che CAMBI PAGINA (location)
   useEffect(() => {
-    localStorage.setItem('kineo_saved_words', JSON.stringify(savedWords));
-  }, [savedWords]);
+    const checkUserAndFetch = async () => {
+      const storedData = localStorage.getItem('userData');
+      
+      if (storedData) {
+        const user = JSON.parse(storedData);
+        
+        // Se l'utente è cambiato (es. login con account diverso) o se non abbiamo ancora caricato nulla...
+        // ...allora scarichiamo il nuovo dizionario!
+        if (user.id !== userId) {
+          setUserId(user.id);
+          try {
+            const res = await axios.get(`http://localhost:5001/api/user/${user.id}/dizionario`);
+            const words = res.data.map(w => ({ ...w, id: w._id }));
+            setSavedWords(words);
+          } catch (err) {
+            console.error("Errore caricamento dizionario:", err);
+          }
+        }
+      } else {
+        // Se non c'è nessuno loggato (Logout), svuotiamo tutto IMMEDIATAMENTE
+        if (userId !== null) {
+            setSavedWords([]);
+            setUserId(null);
+        }
+      }
+    };
+    
+    checkUserAndFetch();
+    
+    // 4. IMPORTANTE: Questo effetto parte ogni volta che 'location' cambia
+  }, [location, userId]); 
 
-  // Funzione Aggiungi/Rimuovi
-  const toggleSaveWord = (wordData) => {
-    const exists = savedWords.find(w => w.original.toLowerCase() === wordData.original.toLowerCase());
-    if (exists) {
-      setSavedWords(prev => prev.filter(w => w.original.toLowerCase() !== wordData.original.toLowerCase()));
-    } else {
-      setSavedWords(prev => [{ ...wordData, id: Date.now(), date: new Date() }, ...prev]);
+
+  // Funzione Aggiungi/Rimuovi (uguale a prima)
+  const toggleSaveWord = async (wordData) => {
+    if (!userId) {
+      alert("Devi essere loggato per salvare le parole!");
+      return;
+    }
+    const existingWord = savedWords.find(w => w.original.toLowerCase() === wordData.original.toLowerCase());
+
+    try {
+      if (existingWord) {
+        const res = await axios.delete(`http://localhost:5001/api/user/${userId}/dizionario/${existingWord.id}`);
+        setSavedWords(res.data.map(w => ({ ...w, id: w._id })));
+      } else {
+        const res = await axios.post(`http://localhost:5001/api/user/${userId}/dizionario`, {
+           original: wordData.original,
+           translation: wordData.translation,
+           type: wordData.type || 'Generic'
+        });
+        setSavedWords(res.data.map(w => ({ ...w, id: w._id })));
+      }
+    } catch (err) {
+      console.error("Errore salvataggio parola:", err);
+      alert("Errore di connessione col dizionario.");
     }
   };
 
-  // Funzione Rimuovi specifica (per la pagina dizionario)
-  const removeWord = (id) => {
-    setSavedWords(prev => prev.filter(w => w.id !== id));
+  // Funzione Rimuovi specifica (uguale a prima)
+  const removeWord = async (id) => {
+    if (!userId) return;
+    try {
+       const res = await axios.delete(`http://localhost:5001/api/user/${userId}/dizionario/${id}`);
+       setSavedWords(res.data.map(w => ({ ...w, id: w._id })));
+    } catch (err) {
+       console.error("Errore rimozione parola:", err);
+    }
   };
 
   return (
-    <Router>
       <Routes>
-        {/* Landing Page (Pubblica) - NIENTE PIÙ TASTO DIZIONARIO QUI */}
         <Route path="/" element={<Home />} />
-        
-        {/* Auth */}
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         
-        {/* Area Privata (Studente) */}
         <Route path="/videos" element={
             <VideoLibrary savedWords={savedWords} onToggleSave={toggleSaveWord} />
         } />
         
-        {/* --- NUOVA PAGINA DIZIONARIO DEDICATA --- */}
         <Route path="/dizionario" element={
             <DictionaryPage savedWords={savedWords} onRemoveWord={removeWord} />
         } />
@@ -385,6 +434,15 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/testvideo" element={<TestVideo />} />
       </Routes>
+  );
+}
+
+// --- COMPONENTE PRINCIPALE: IL GUSCIO ---
+// Questo serve SOLO a fornire il Router, così AppContent può usare useLocation
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

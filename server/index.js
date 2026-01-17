@@ -270,6 +270,77 @@ app.put('/api/user/:id', async (req, res) => {
   }
 });
 
+//AGGIUNTE PER FAR PASSARE PAROLE A DIZIONARIO
+// --- DIZIONARIO PERSONALE (Salvataggio su DB) ---
+
+// 1. GET Dizionario: Ottieni tutte le parole salvate dall'utente
+app.get('/api/user/:id/dizionario', async (req, res) => {
+  try {
+    const user = await Utente.findById(req.params.id);
+    if (!user) return res.status(404).json({ msg: "Utente non trovato" });
+    
+    // Ordina per data (le più recenti in alto)
+    const parole = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(parole);
+  } catch (err) {
+    console.error("Errore GET dizionario:", err);
+    res.status(500).json({ msg: "Errore server" });
+  }
+});
+
+// 2. POST Dizionario: Aggiungi una parola
+app.post('/api/user/:id/dizionario', async (req, res) => {
+  try {
+    const { original, translation, type } = req.body;
+    
+    // Trova l'utente
+    const user = await Utente.findById(req.params.id);
+    if (!user) return res.status(404).json({ msg: "Utente non trovato" });
+
+    // Controlla se la parola esiste già (case insensitive)
+    const esisteGia = user.dizionario.find(
+      w => w.original.toLowerCase() === original.toLowerCase()
+    );
+
+    if (esisteGia) {
+      return res.status(400).json({ msg: "Parola già presente nel dizionario" });
+    }
+
+    // Aggiungi la parola
+    user.dizionario.push({ original, translation, type });
+    await user.save();
+
+    // Restituisci il dizionario aggiornato
+    const paroleAggiornate = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(paroleAggiornate);
+
+  } catch (err) {
+    console.error("Errore POST dizionario:", err);
+    res.status(500).json({ msg: "Errore server" });
+  }
+});
+
+// 3. DELETE Dizionario: Rimuovi una parola
+app.delete('/api/user/:id/dizionario/:wordId', async (req, res) => {
+  try {
+    const user = await Utente.findById(req.params.id);
+    if (!user) return res.status(404).json({ msg: "Utente non trovato" });
+
+    // Rimuovi la parola dall'array usando il suo ID
+    user.dizionario.pull({ _id: req.params.wordId });
+    await user.save();
+
+    const paroleAggiornate = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(paroleAggiornate);
+
+  } catch (err) {
+    console.error("Errore DELETE dizionario:", err);
+    res.status(500).json({ msg: "Errore server" });
+  }
+});
+
+//FINE PARTE PER DIZIONARIO
+
 // --- COMMENTI ---
 
 // GET /api/commenti/video/:videoId (Ottiene tutti i commenti di un video con risposte)
