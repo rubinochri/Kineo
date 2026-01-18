@@ -31,35 +31,54 @@ export default function TestVideo() {
 
   // --- STATI FORM ---
   
-  // 1. Nuovo Video
+  // 1. Nuovo Video (Inclusi campi Serie)
   const [videoData, setVideoData] = useState({
     titolo: '',
     url: '',
     copertina: '',
     livelloDifficolta: 'A1',
-    descrizione: ''
+    descrizione: '',
+    serie: '',     // NUOVO
+    episodio: ''   // NUOVO
   });
 
   // 2. Sottotitoli
   const [subVideoId, setSubVideoId] = useState(''); 
   const [jsonSegmenti, setJsonSegmenti] = useState(''); 
 
-  // 3. Aggiornamento (Nuovo)
-  const [updateId, setUpdateId] = useState('');
-  const [updateCoverUrl, setUpdateCoverUrl] = useState('');
+  // 3. Modifica / Assegna Serie (Aggiornato)
+  const [updateData, setUpdateData] = useState({
+    id: '',
+    serie: '',
+    episodio: '',
+    copertina: ''
+  });
 
   // --- HANDLERS ---
 
   // Crea Video
   const handleChangeVideo = (e) => setVideoData({ ...videoData, [e.target.name]: e.target.value });
+  
   const handleSubmitVideo = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5001/api/videos', videoData);
+      // Pulizia dati opzionali
+      const payload = { ...videoData };
+      if (!payload.serie) delete payload.serie;
+      if (!payload.episodio) delete payload.episodio;
+
+      const res = await axios.post('http://localhost:5001/api/videos', payload);
       alert('✅ Video creato! ID: ' + res.data._id);
-      setUpdateId(res.data._id); // Auto-compila il campo aggiornamento
-      setSubVideoId(res.data._id); // Auto-compila il campo sottotitoli
-      setVideoData({ titolo: '', url: '', copertina: '', livelloDifficolta: 'A1', descrizione: '' });
+      
+      setUpdateData(prev => ({ ...prev, id: res.data._id })); // Auto-compila update
+      setSubVideoId(res.data._id); // Auto-compila sottotitoli
+      
+      // Reset form
+      setVideoData({ 
+        titolo: '', url: '', copertina: '', 
+        livelloDifficolta: 'A1', descrizione: '', 
+        serie: '', episodio: '' 
+      });
     } catch (err) {
       alert('❌ Errore creazione: ' + (err.response?.data?.message || err.message));
     }
@@ -80,17 +99,25 @@ export default function TestVideo() {
     }
   };
 
-  // Aggiorna Copertina (Nuovo)
-  const handleUpdateCover = async (e) => {
+  // Aggiorna Video (Serie o Copertina)
+  const handleChangeUpdate = (e) => setUpdateData({ ...updateData, [e.target.name]: e.target.value });
+
+  const handleUpdateVideo = async (e) => {
     e.preventDefault();
-    if (!updateId || !updateCoverUrl) return alert("Inserisci ID e URL Copertina");
+    if (!updateData.id) return alert("Inserisci ID Video");
     
     try {
-      await axios.patch(`http://localhost:5001/api/videos/${updateId}`, {
-        copertina: updateCoverUrl
-      });
-      alert('✅ Copertina aggiornata con successo!');
-      setUpdateCoverUrl('');
+      // Costruiamo payload solo con campi compilati
+      const payload = {};
+      if (updateData.serie) payload.serie = updateData.serie;
+      if (updateData.episodio) payload.episodio = updateData.episodio;
+      if (updateData.copertina) payload.copertina = updateData.copertina;
+
+      if (Object.keys(payload).length === 0) return alert("Compila almeno un campo da modificare.");
+
+      await axios.patch(`http://localhost:5001/api/videos/${updateData.id}`, payload);
+      alert('✅ Video aggiornato con successo!');
+      setUpdateData({ id: '', serie: '', episodio: '', copertina: '' });
     } catch (err) {
       alert('❌ Errore aggiornamento: ' + err.message);
     }
@@ -118,8 +145,15 @@ export default function TestVideo() {
           <h2 style={{color: '#28a745'}}>1. Crea Nuovo Video</h2>
           <form onSubmit={handleSubmitVideo} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <input name="titolo" placeholder="Titolo" value={videoData.titolo} onChange={handleChangeVideo} required style={inputStyle}/>
-            <input name="url" placeholder="URL Video" value={videoData.url} onChange={handleChangeVideo} required style={inputStyle}/>
+            <input name="url" placeholder="URL Video (YouTube o File)" value={videoData.url} onChange={handleChangeVideo} required style={inputStyle}/>
             <input name="copertina" placeholder="URL Copertina (Opzionale)" value={videoData.copertina} onChange={handleChangeVideo} style={inputStyle}/>
+            
+            {/* Campi Serie */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input name="serie" placeholder="Nome Serie (es. SpiderMan)" value={videoData.serie} onChange={handleChangeVideo} style={{...inputStyle, flex: 2}}/>
+              <input name="episodio" type="number" placeholder="Ep. N." value={videoData.episodio} onChange={handleChangeVideo} style={{...inputStyle, flex: 1}}/>
+            </div>
+
             <select name="livelloDifficolta" value={videoData.livelloDifficolta} onChange={handleChangeVideo} style={inputStyle}>
               {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(l => <option key={l} value={l}>{l}</option>)}
             </select>
@@ -138,26 +172,42 @@ export default function TestVideo() {
           </form>
         </div>
 
-        {/* 3. AGGIORNA COPERTINA (NUOVO) */}
+        {/* 3. MODIFICA / ASSEGNA SERIE */}
         <div style={{ flex: '1 1 300px', borderLeft: '1px solid #eee', paddingLeft: '30px' }}>
-          <h2 style={{color: '#e0a800'}}>3. Aggiorna Copertina</h2>
-          <p style={{fontSize: '0.9em', color: '#666'}}>Modifica la copertina di un video esistente.</p>
-          <form onSubmit={handleUpdateCover} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h2 style={{color: '#e0a800'}}>3. Modifica / Assegna Serie</h2>
+          <p style={{fontSize: '0.9em', color: '#666'}}>Compila solo i campi che vuoi modificare.</p>
+          <form onSubmit={handleUpdateVideo} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <input 
+              name="id"
               placeholder="ID Video da modificare" 
-              value={updateId} 
-              onChange={(e) => setUpdateId(e.target.value)} 
+              value={updateData.id} 
+              onChange={handleChangeUpdate} 
               required 
               style={idStyle}
             />
             <input 
-              placeholder="Nuovo URL Copertina" 
-              value={updateCoverUrl} 
-              onChange={(e) => setUpdateCoverUrl(e.target.value)} 
-              required 
+              name="serie"
+              placeholder="Nome Serie (Nuovo o Esistente)" 
+              value={updateData.serie} 
+              onChange={handleChangeUpdate} 
               style={inputStyle}
             />
-            <button type="submit" style={btnStyleYellow}>AGGIORNA COPERTINA</button>
+            <input 
+              name="episodio"
+              type="number"
+              placeholder="Numero Episodio" 
+              value={updateData.episodio} 
+              onChange={handleChangeUpdate} 
+              style={inputStyle}
+            />
+            <input 
+              name="copertina"
+              placeholder="Nuovo URL Copertina" 
+              value={updateData.copertina} 
+              onChange={handleChangeUpdate} 
+              style={inputStyle}
+            />
+            <button type="submit" style={btnStyleYellow}>AGGIORNA DATI</button>
           </form>
         </div>
 
@@ -171,4 +221,4 @@ const inputStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #c
 const idStyle = { ...inputStyle, background: '#f8f9fa', fontFamily: 'monospace', fontWeight: 'bold' };
 const btnStyleGreen = { padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
 const btnStyleBlue = { ...btnStyleGreen, background: '#007bff' };
-const btnStyleYellow = { ...btnStyleGreen, background: '#e0a800', color: 'black' }; // Giallo per modifica
+const btnStyleYellow = { ...btnStyleGreen, background: '#e0a800', color: 'black' };

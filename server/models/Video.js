@@ -55,7 +55,7 @@ const VideoSchema = new mongoose.Schema({
   copertina: { 
     type: String, 
     trim: true,
-    maxlength: 2048 // MODIFICATO: Aumentato per supportare URL lunghi
+    maxlength: 2048 
   },
 
   descrizione: { 
@@ -80,6 +80,21 @@ const VideoSchema = new mongoose.Schema({
     enum: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
     uppercase: true
   },
+  
+  // --- NUOVI CAMPI PER SERIE TV ---
+  serie: {
+    type: String,
+    trim: true,
+    index: true, // Indicizzato per raggruppamento veloce
+    default: null
+  },
+  
+  episodio: {
+    type: Number,
+    min: 1,
+    default: null
+  },
+  // -------------------------------
 
   dataCaricamento: { 
     type: Date, 
@@ -89,6 +104,6 @@ const VideoSchema = new mongoose.Schema({
   segmenti: [SegmentoSchema]
 });
 
-VideoSchema.index({ titolo: 'text' }); 
+VideoSchema.index({ titolo: 'text', serie: 'text' }); 
 
 module.exports = mongoose.model('Video', VideoSchema);
