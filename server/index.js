@@ -51,7 +51,7 @@ app.post('/api/translate', async (req, res) => {
 
 // --- VIDEO ---
 
-// PATCH /api/videos/:id/segmenti
+// PATCH /api/videos/:id/segmenti (Aggiorna solo i sottotitoli)
 app.patch('/api/videos/:id/segmenti', async (req, res) => {
   try {
     const { segmenti } = req.body; 
@@ -67,6 +67,28 @@ app.patch('/api/videos/:id/segmenti', async (req, res) => {
     );
 
     if (!videoAggiornato) return res.status(404).json({ message: 'Video non trovato' });
+
+    res.json(videoAggiornato);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// PATCH /api/videos/:id (Aggiorna dati generici: copertina, titolo, ecc.) - NUOVA ROTTA AGGIUNTA
+app.patch('/api/videos/:id', async (req, res) => {
+  try {
+    const updates = req.body;
+    const options = { new: true, runValidators: true }; // Restituisce il doc aggiornato e valida i dati
+
+    const videoAggiornato = await Video.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      options
+    );
+
+    if (!videoAggiornato) {
+      return res.status(404).json({ message: "Video non trovato" });
+    }
 
     res.json(videoAggiornato);
   } catch (err) {
@@ -156,7 +178,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// POST /api/login (NUOVA ROTTA)
+// POST /api/login
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;

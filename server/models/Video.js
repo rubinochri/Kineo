@@ -1,64 +1,50 @@
 const mongoose = require('mongoose');
 
-// 1. Schema APPROFONDIMENTO (Livello 3 - Il più interno)
-// Rappresenta la singola parola/frase cliccabile
+// 1. Schema APPROFONDIMENTO
 const ApprofondimentoSchema = new mongoose.Schema({
-  // ID_Approfondimento: Generato automaticamente da MongoDB come "_id"
-
   token: { 
-    type: String,       // La parola o frase esatta (es. "Give up")
+    type: String,       
     required: true, 
     trim: true,
     maxlength: 255
   },
-
   tipo: {
     type: String,
     required: true,
-    enum: ['Idioma', 'Phrasal Verb', 'Grammatica', 'Vocabolo'] // Lista chiusa valori ammessi
+    enum: ['Idioma', 'Phrasal Verb', 'Grammatica', 'Vocabolo'] 
   },
-
   significato: {
-    type: String,       // TEXT
+    type: String,       
     required: true
   }
 });
 
-// 2. Schema SEGMENTO (Livello 2 - Sottotitolo)
+// 2. Schema SEGMENTO 
 const SegmentoSchema = new mongoose.Schema({
-  // ID_Segmento: Generato automaticamente come "_id"
-
   startTime: { 
     type: Number, 
     required: true,
     min: 0 
   },
-
   endTime: { 
     type: Number, 
     required: true,
     min: 0 
   },
-
   testoInglese: { 
     type: String, 
     required: true,
     trim: true 
   },
-
   testoItaliano: { 
     type: String, 
     trim: true 
   },
-
-  // RELAZIONE: Un segmento CONTIENE molti Approfondimenti
   approfondimenti: [ApprofondimentoSchema] 
 });
 
-// 3. Schema VIDEO (Livello 1 - Entità Principale)
+// 3. Schema VIDEO 
 const VideoSchema = new mongoose.Schema({
-  // ID_Video: Generato automaticamente come "_id"
-
   titolo: { 
     type: String, 
     required: true, 
@@ -69,7 +55,7 @@ const VideoSchema = new mongoose.Schema({
   copertina: { 
     type: String, 
     trim: true,
-    maxlength: 255 
+    maxlength: 2048 // MODIFICATO: Aumentato per supportare URL lunghi
   },
 
   descrizione: { 
@@ -100,11 +86,9 @@ const VideoSchema = new mongoose.Schema({
     default: Date.now 
   },
 
-  // RELAZIONE: Un Video INCLUDE molti Segmenti
   segmenti: [SegmentoSchema]
 });
 
-// Indici per velocizzare le ricerche
 VideoSchema.index({ titolo: 'text' }); 
 
 module.exports = mongoose.model('Video', VideoSchema);

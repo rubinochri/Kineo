@@ -111,10 +111,24 @@ function VideoCard({ video }) {
   };
 
   return (
-    <div style={{ marginBottom: '60px', border: '1px solid #ddd', padding: '20px', borderRadius: '8px', position: 'relative' }}>
-      <h2>{video.titolo} <span style={{fontSize:'0.6em', background:'#eee', padding:'2px 5px', marginLeft: '10px', borderRadius:'4px'}}>{video.livelloDifficolta}</span></h2>
+    <div style={{ position: 'relative', width: '100%' }}>
+      
+      {/* TOOLTIP (Definizioni) */}
       {tooltip && (
-        <div style={{ position: 'fixed', bottom: '20px', right: '20px', width: '300px', backgroundColor: 'white', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', borderRadius: '10px', padding: '20px', borderLeft: `6px solid ${tooltip.type === 'DB' ? '#fbc02d' : '#007bff'}`, zIndex: 1000, fontFamily: 'Arial, sans-serif', animation: 'slideIn 0.3s ease-out' }}>
+        <div style={{ 
+            position: 'fixed', 
+            bottom: '20px', 
+            right: '20px', 
+            width: '300px', 
+            backgroundColor: 'white', 
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)', 
+            borderRadius: '10px', 
+            padding: '20px', 
+            borderLeft: `6px solid ${tooltip.type === 'DB' ? '#fbc02d' : '#007bff'}`, 
+            zIndex: 2000, // Z-index alto per stare sopra la modale
+            fontFamily: 'Arial, sans-serif', 
+            animation: 'slideIn 0.3s ease-out' 
+        }}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
             <span style={{ textTransform:'uppercase', fontSize:'0.7em', fontWeight:'bold', letterSpacing:'1px', color: tooltip.type === 'DB' ? '#f9a825' : '#007bff', backgroundColor: tooltip.type === 'DB' ? '#fff9c4' : '#e3f2fd', padding: '2px 8px', borderRadius: '10px' }}>{tooltip.meta}</span>
             <button onClick={() => setTooltip(null)} style={{border:'none', background:'transparent', cursor:'pointer', fontSize:'1.5em', lineHeight: '0.8', color: '#999'}}>&times;</button>
@@ -124,33 +138,39 @@ function VideoCard({ video }) {
           {tooltip.type !== 'DB' && (<small style={{display:'block', marginTop:'10px', color:'#ccc', fontSize:'0.7em'}}>*Da Dizionario Locale</small>)}
         </div>
       )}
-      <div style={{ width: '100%', maxWidth: '800px', margin: '20px 0', backgroundColor: '#000', borderRadius: '8px', overflow: 'hidden' }}>
+
+      {/* PLAYER VIDEO */}
+      <div style={{ width: '100%', backgroundColor: '#000', overflow: 'hidden' }}>
           {video.url ? (
               isDirectFile(video.url) ? (
-                  <video ref={playerRef} src={video.url} controls width="100%" style={{ display: 'block' }} />
+                  <video ref={playerRef} src={video.url} controls width="100%" style={{ display: 'block', maxHeight: '70vh' }} />
               ) : (
                   <div style={{ position: 'relative', paddingTop: '56.25%' }}>
                       <ReactPlayer ref={playerRef} key={video.url} url={video.url} controls={true} width="100%" height="100%" style={{ position: 'absolute', top: 0, left: 0 }} config={{ youtube: { playerVars: { showinfo: 1, origin: window.location.origin }}}} />
                   </div>
               )
-          ) : (<div style={{padding: '20px', color: 'white', textAlign: 'center'}}>URL mancante</div>)}
+          ) : (<div style={{padding: '50px', color: 'white', textAlign: 'center'}}>URL mancante</div>)}
       </div>
-      {video.descrizione && <p><i>{video.descrizione}</i></p>}
+
+      {/* SEGMENTI INTERATTIVI (SOTTOTITOLI) */}
       {video.segmenti && video.segmenti.length > 0 && (
-          <div onMouseUp={handleTextSelection} style={{ height: '300px', overflowY: 'scroll', border: '1px solid #ccc', padding: '15px', marginTop: '10px', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
-          {video.segmenti.map((seg, index) => (
-              <div key={index} style={{ marginBottom: '15px', borderBottom: '1px solid #e0e0e0', paddingBottom: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline' }}>
-                  <span onClick={() => handleSeek(seg.startTime)} style={{ fontWeight: 'bold', color: '#007bff', minWidth: '50px', fontSize: '0.9em', cursor: 'pointer', textDecoration: 'underline' }}>[{Math.floor(seg.startTime)}]s</span>
-                  <span style={{ fontSize: '1.1em', color: '#333', marginLeft: '8px', lineHeight: '1.6' }}>{renderInteractiveText(seg.testoInglese, seg.approfondimenti)}</span>
-              </div>
-              {seg.testoItaliano && (<div style={{ marginLeft: '58px', marginTop: '4px', color: '#666', fontStyle: 'italic', fontSize: '0.95em' }}>{seg.testoItaliano}</div>)}
-              </div>
-          ))}
+          <div style={{ padding: '0 20px' }}>
+            <div onMouseUp={handleTextSelection} style={{ height: '250px', overflowY: 'auto', border: '1px solid #e0e0e0', padding: '15px', marginTop: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+                {video.segmenti.map((seg, index) => (
+                    <div key={index} style={{ marginBottom: '15px', borderBottom: '1px dashed #e0e0e0', paddingBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                        <span onClick={() => handleSeek(seg.startTime)} style={{ fontWeight: 'bold', color: '#2563eb', minWidth: '50px', fontSize: '0.9em', cursor: 'pointer', textDecoration: 'underline' }}>[{Math.floor(seg.startTime)}]s</span>
+                        <span style={{ fontSize: '1.1em', color: '#333', marginLeft: '8px', lineHeight: '1.6' }}>{renderInteractiveText(seg.testoInglese, seg.approfondimenti)}</span>
+                    </div>
+                    {seg.testoItaliano && (<div style={{ marginLeft: '58px', marginTop: '4px', color: '#666', fontStyle: 'italic', fontSize: '0.95em' }}>{seg.testoItaliano}</div>)}
+                    </div>
+                ))}
+            </div>
           </div>
       )}
       <style>{`@keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
   );
 }
+
 export default VideoCard;
