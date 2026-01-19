@@ -3,12 +3,8 @@ import axios from 'axios';
 import ReactPlayer from 'react-player';
 import './App.css'; // Assicurati che gli stili siano importati
 
-<<<<<<< HEAD
 // 1. MODIFICA: Aggiungo savedWords e onToggleSave alle props
 function VideoCard({ video, savedWords, onToggleSave }) {
-=======
-function VideoCard({ video, utenteId }) { // Assumo utenteId venga passato come prop o ottenuto dal context
->>>>>>> 956305a30c7d0b21eb0ba55aea21e968493df67f
   const playerRef = useRef(null);
   const containerRef = useRef(null); // Ref per il fullscreen
   
@@ -35,19 +31,18 @@ function VideoCard({ video, utenteId }) { // Assumo utenteId venga passato come 
     }
   };
 
-<<<<<<< HEAD
   // 2. NUOVA FUNZIONE: Controlla se la parola è già nel dizionario (per colorare la stella)
   const isWordSaved = (text) => {
     if (!savedWords || !text) return false;
     return savedWords.some(w => w.original.toLowerCase() === text.toLowerCase());
   };
-=======
+
   // --- SUBTITLE LOGIC ---
   // Filtra il segmento attivo in base al tempo corrente
+  // (IMPORTANTE: La manteniamo perché serve per visualizzare i sottotitoli sotto al video)
   const currentSegment = video.segmenti?.find(
     seg => currentTime >= seg.startTime && currentTime <= seg.endTime
   );
->>>>>>> 956305a30c7d0b21eb0ba55aea21e968493df67f
 
   const fetchTranslation = async (text, type) => {
     // Mette in pausa il video quando si cerca una parola
@@ -162,7 +157,7 @@ function VideoCard({ video, utenteId }) { // Assumo utenteId venga passato come 
         // Mock API Call
         await axios.post('http://localhost:5001/api/comments', {
             videoId: video._id,
-            utenteId: utenteId || "guest_id", // Fallback se non autenticato
+            utenteId: "guest_id", // Fallback se non autenticato
             testo: newComment
         });
         setNewComment("");
@@ -238,7 +233,6 @@ function VideoCard({ video, utenteId }) { // Assumo utenteId venga passato come 
               <div className="kineo-subtitle-overlay">
                   <div className="kineo-active-subtitle">
                       {renderInteractiveSubtitle(currentSegment.testoInglese, currentSegment.approfondimenti)}
-                      {/* RIMOSSO SOTTOTITOLO ITALIANO */}
                   </div>
               </div>
           )}
