@@ -7,15 +7,25 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
   const navigate = useNavigate();
   const [videos, setVideos] = useState([]);
   const [user, setUser] = useState(null);
+  
+  // Stato Commenti
   const [commentiPerVideo, setCommentiPerVideo] = useState({});
   const [nuovoCommentoPerVideo, setNuovoCommentoPerVideo] = useState({});
   const [caricandoCommenti, setCaricandoCommenti] = useState({});
-  const [risposteVisibili, setRisposteVisibili] = useState({});
+  // const [risposteVisibili, setRisposteVisibili] = useState({}); // Non usato al momento ma mantenuto per compatibilità
   const [nuovaRispostaPerCommento, setNuovaRispostaPerCommento] = useState({});
   const [likedCommenti, setLikedCommenti] = useState({});
+  
+  // UI & Filtri
   const [ricerca, setRicerca] = useState('');
   const [livelloDifficolta, setLivelloDifficolta] = useState('');
+  const [viewMode, setViewMode] = useState('MOVIES'); // 'MOVIES' | 'SERIES'
+  
+  // Gestione Player e Serie
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [relatedEpisodes, setRelatedEpisodes] = useState([]); 
 
+  // 1. Init
   useEffect(() => {
     const storedUser = localStorage.getItem('userData');
     if (!storedUser) {
@@ -26,14 +36,13 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
     }
   }, [navigate]);
 
+  // 2. Fetch Data
   const fetchVideos = async () => {
     try {
       const res = await axios.get('http://localhost:5001/api/videos');
-      setVideos(res.data);
-      // Carica commenti per ogni video
-      res.data.forEach(video => {
-        fetchCommenti(video._id);
-      });
+      const sorted = res.data.sort((a, b) => new Date(b.dataCaricamento) - new Date(a.dataCaricamento));
+      setVideos(sorted);
+      sorted.forEach(video => fetchCommenti(video._id));
     } catch (err) {
       console.error("Errore caricamento video:", err);
     }
@@ -51,131 +60,85 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
     }
   };
 
-  const handleInviaCommento = async (videoId, e) => {
-    e.preventDefault();
-    
-    const testoCommento = nuovoCommentoPerVideo[videoId]?.trim();
-    if (!testoCommento) {
-      alert("Scrivi un commento!");
-      return;
-    }
+  // --- LOGICA FILTRO E RAGGRUPPAMENTO ---
+  const getContentToDisplay = () => {
+    const filteredBase = videos.filter(video => 
+      (video.titolo.toLowerCase().includes(ricerca.toLowerCase()) ||
+       (video.serie && video.serie.toLowerCase().includes(ricerca.toLowerCase())) ||
+       (video.descrizione && video.descrizione.toLowerCase().includes(ricerca.toLowerCase()))) &&
+      (livelloDifficolta === '' || video.livelloDifficolta === livelloDifficolta)
+    );
 
-    if (!user || !user.id) {
-      alert("Devi essere loggato per commentare!");
-      return;
-    }
-
-    try {
-      const res = await axios.post('http://localhost:5001/api/commenti', {
-        utenteId: user.id,
-        videoId: videoId,
-        testo: testoCommento
+    if (viewMode === 'MOVIES') {
+      return filteredBase
+        .filter(v => !v.serie)
+        .map(v => ({ type: 'VIDEO', ...v, mainVideo: v }));
+    } else {
+      const groups = {};
+      filteredBase.filter(v => v.serie).forEach(video => {
+        if (!groups[video.serie]) groups[video.serie] = [];
+        groups[video.serie].push(video);
       });
-      
-      setCommentiPerVideo(prev => ({
-        ...prev,
-        [videoId]: [res.data, ...(prev[videoId] || [])]
-      }));
-      setNuovoCommentoPerVideo(prev => ({ ...prev, [videoId]: '' }));
-    } catch (err) {
-      console.error("Errore invio commento:", err);
-      alert("Errore nell'invio del commento");
+
+      return Object.keys(groups).map(serieName => {
+        const episodes = groups[serieName].sort((a, b) => a.episodio - b.episodio);
+        return {
+          type: 'SERIES',
+          _id: `serie-${serieName}`,
+          serie: serieName,
+          mainVideo: episodes[0],
+          episodes: episodes,
+          count: episodes.length
+        };
+      });
     }
   };
 
-  const handleInviaRisposta = async (videoId, parentCommentoId, e) => {
-    e.preventDefault();
-    
-    const testoRisposta = nuovaRispostaPerCommento[parentCommentoId]?.trim();
-    if (!testoRisposta) {
-      alert("Scrivi una risposta!");
-      return;
+  const handleCardClick = (item) => {
+    if (item.type === 'SERIES') {
+      setSelectedVideo(item.episodes[0]); 
+      setRelatedEpisodes(item.episodes);
+    } else {
+      setSelectedVideo(item.mainVideo);
+      setRelatedEpisodes([]);
     }
+  };
 
-    if (!user || !user.id) {
-      alert("Devi essere loggato per rispondere!");
-      return;
-    }
+  // --- COMMENTI ACTIONS ---
+  const handleInviaCommento = async (videoId, e) => {
+    e.preventDefault();
+    const testoCommento = nuovoCommentoPerVideo[videoId]?.trim();
+    if (!testoCommento) return alert("Scrivi un commento!");
+    if (!user) return alert("Login necessario");
 
     try {
       const res = await axios.post('http://localhost:5001/api/commenti', {
-        utenteId: user.id,
-        videoId: videoId,
-        testo: testoRisposta,
-        parentCommentoId: parentCommentoId
+        utenteId: user.id, videoId, testo: testoCommento
       });
-      
-      setCommentiPerVideo(prev => {
-        const updatedCommenti = prev[videoId].map(commento => {
-          if (commento._id === parentCommentoId) {
-            return {
-              ...commento,
-              risposte: [...(commento.risposte || []), res.data]
-            };
-          }
-          return commento;
-        });
-        return { ...prev, [videoId]: updatedCommenti };
-      });
-      
-      setNuovaRispostaPerCommento(prev => ({ ...prev, [parentCommentoId]: '' }));
-    } catch (err) {
-      console.error("Errore invio risposta:", err);
-      alert("Errore nell'invio della risposta");
-    }
+      setCommentiPerVideo(prev => ({ ...prev, [videoId]: [res.data, ...(prev[videoId] || [])] }));
+      setNuovoCommentoPerVideo(prev => ({ ...prev, [videoId]: '' }));
+    } catch (err) { console.error(err); alert("Errore invio commento"); }
   };
 
   const handleToggleLike = async (commentoId) => {
-    if (!user || !user.id) {
-      alert("Devi essere loggato per mettere like!");
-      return;
-    }
-
     try {
-      const res = await axios.put(`http://localhost:5001/api/commenti/${commentoId}/like`, {
-        utenteId: user.id
-      });
-
-      // Aggiorna lo stato globale
-      setLikedCommenti(prev => ({
-        ...prev,
-        [commentoId]: !prev[commentoId]
-      }));
-
-      // Aggiorna il commento nel list
-      setCommentiPerVideo(prev => {
-        const newCommenti = {};
-        for (const [videoId, commenti] of Object.entries(prev)) {
-          newCommenti[videoId] = commenti.map(c => {
-            if (c._id === commentoId) {
-              return { ...c, like: res.data.like };
-            }
-            if (c.risposte) {
-              return {
-                ...c,
-                risposte: c.risposte.map(r => r._id === commentoId ? { ...r, like: res.data.like } : r)
-              };
-            }
-            return c;
-          });
-        }
-        return newCommenti;
-      });
-    } catch (err) {
-      console.error("Errore aggiornamento like:", err);
-      alert("Errore nel mettere like");
-    }
+      await axios.put(`http://localhost:5001/api/commenti/${commentoId}/like`, { utenteId: user.id });
+      setLikedCommenti(prev => ({ ...prev, [commentoId]: !prev[commentoId] }));
+    } catch (err) { console.error(err); }
   };
 
   if (!user) return null;
 
+  const contentToDisplay = getContentToDisplay();
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
       
-      {/* --- NAVBAR MODIFICATA --- */}
+      {/* --- NAVBAR --- */}
+      {/* Ho mantenuto la TUA versione perché contiene il tasto per il Dizionario */}
       <nav style={{ 
         display: 'flex', 
-        justifyContent: 'space-between', // Distribuisce gli elementi
+        justifyContent: 'space-between', 
         alignItems: 'center', 
         padding: '15px 30px', 
         background: 'white', 
@@ -183,20 +146,19 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         
-        {/* 1. SINISTRA: Tasto Dizionario (Stile Dorato) */}
+        {/* 1. SINISTRA: Tasto Dizionario (Tuo Design) */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
             <Link to="/dizionario" style={{ textDecoration: 'none' }}>
                 <button style={{
-                    // Stile Dorato (Gradient)
                     background: 'linear-gradient(180deg, #eebb58 0%, #c49128 100%)', 
-                    color: '#2d1e0f', // Testo marrone scuro per contrasto
+                    color: '#2d1e0f',
                     border: '1px solid #b68523',
                     padding: '10px 20px',
-                    borderRadius: '50px', // Molto arrotondato (Pill shape)
+                    borderRadius: '50px',
                     fontWeight: 'bold',
                     fontSize: '0.95rem',
                     cursor: 'pointer',
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)', // Ombra leggera
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
                     display: 'flex', alignItems: 'center', gap: '8px',
                     transition: 'transform 0.1s'
                 }}
@@ -204,7 +166,6 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
                 onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
                 >
                     📖 Il mio dizionario
-                    {/* Badge contatore parole */}
                     <span style={{ 
                         backgroundColor: '#fff', 
                         color: '#c49128', 
@@ -247,317 +208,272 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
               </div>
             </Link>
         </div>
-
       </nav>
 
-      {/* GRIGLIA VIDEO */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '30px 20px' }}>
-        <h2 style={{ marginBottom: '30px', color: '#1f2937', textAlign: 'center' }}>Video Disponibili</h2>
+      {/* --- BODY PRINCIPALE --- */}
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px 20px' }}>
         
-        {/* BARRA DI RICERCA */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
-          <div style={{ width: '100%', maxWidth: '500px' }}>
-            <input
-              type="text"
-              value={ricerca}
-              onChange={(e) => setRicerca(e.target.value)}
-              placeholder="Cerca video per titolo o descrizione..."
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '2px solid #e5e7eb',
-                fontSize: '1em',
-                fontFamily: 'Arial, sans-serif',
-                transition: 'border-color 0.3s, box-shadow 0.3s',
-                boxSizing: 'border-box'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#2563eb';
-                e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#e5e7eb';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-          </div>
-        </div>
+        {/* HEADER CONTROLS (Solo se no modale) */}
+        {!selectedVideo && (
+          <>
+            <h2 style={{ marginBottom: '20px', color: '#1f2937', textAlign: 'center' }}>Catalogo Video</h2>
+            
+            {/* 1. RICERCA (Nuova Feature dei colleghi) */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+                 <input
+                    type="text"
+                    value={ricerca}
+                    onChange={(e) => setRicerca(e.target.value)}
+                    placeholder={viewMode === 'MOVIES' ? "Cerca film..." : "Cerca serie..."}
+                    style={{ width: '100%', maxWidth: '500px', padding: '12px 16px', borderRadius: '30px', border: '2px solid #e5e7eb', fontSize: '1rem', outline: 'none' }}
+                 />
+            </div>
 
-        {/* FILTRO LIVELLO DIFFICOLTÀ */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: '600', color: '#1f2937', alignSelf: 'center' }}>Filtra per livello:</span>
-          <button
-            onClick={() => setLivelloDifficolta('')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              border: livelloDifficolta === '' ? '2px solid #2563eb' : '2px solid #e5e7eb',
-              backgroundColor: livelloDifficolta === '' ? '#2563eb' : 'white',
-              color: livelloDifficolta === '' ? 'white' : '#1f2937',
-              cursor: 'pointer',
-              fontWeight: '600',
-              fontSize: '0.95em',
-              transition: 'all 0.3s'
-            }}
-          >
-            Tutti
-          </button>
-          {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(livello => (
+            {/* 2. SLIDER TOGGLE (Tua Feature) */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
+              <div style={{ 
+                position: 'relative', display: 'flex', backgroundColor: '#e5e7eb', 
+                borderRadius: '30px', padding: '4px', width: '250px', height: '40px',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+              }}>
+                <div style={{
+                  position: 'absolute', top: '4px', bottom: '4px', width: '50%',
+                  left: viewMode === 'MOVIES' ? '4px' : '50%',
+                  backgroundColor: 'white', borderRadius: '25px',
+                  transition: 'left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)', 
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                  zIndex: 1
+                }}></div>
+                
+                <button 
+                  onClick={() => setViewMode('MOVIES')} 
+                  style={{ 
+                    flex: 1, border: 'none', background: 'transparent', zIndex: 2, cursor: 'pointer',
+                    fontWeight: viewMode === 'MOVIES' ? '700' : '500', 
+                    color: viewMode === 'MOVIES' ? '#2563eb' : '#6b7280',
+                    transition: 'color 0.3s'
+                  }}
+                >
+                  Film
+                </button>
+                <button 
+                  onClick={() => setViewMode('SERIES')} 
+                  style={{ 
+                    flex: 1, border: 'none', background: 'transparent', zIndex: 2, cursor: 'pointer',
+                    fontWeight: viewMode === 'SERIES' ? '700' : '500', 
+                    color: viewMode === 'SERIES' ? '#9333ea' : '#6b7280',
+                    transition: 'color 0.3s'
+                  }}
+                >
+                  Serie TV
+                </button>
+              </div>
+            </div>
+
+            {/* 3. FILTRO LIVELLO (Tua Feature) */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: '600', color: '#1f2937', alignSelf: 'center' }}>Livello:</span>
             <button
-              key={livello}
-              onClick={() => setLivelloDifficolta(livello)}
-              style={{
+                onClick={() => setLivelloDifficolta('')}
+                style={{
                 padding: '8px 16px',
                 borderRadius: '6px',
-                border: livelloDifficolta === livello ? '2px solid #2563eb' : '2px solid #e5e7eb',
-                backgroundColor: livelloDifficolta === livello ? '#2563eb' : 'white',
-                color: livelloDifficolta === livello ? 'white' : '#1f2937',
+                border: livelloDifficolta === '' ? '2px solid #2563eb' : '2px solid #e5e7eb',
+                backgroundColor: livelloDifficolta === '' ? '#2563eb' : 'white',
+                color: livelloDifficolta === '' ? 'white' : '#1f2937',
                 cursor: 'pointer',
                 fontWeight: '600',
-                fontSize: '0.95em',
                 transition: 'all 0.3s'
-              }}
+                }}
             >
-              {livello}
+                Tutti
             </button>
-          ))}
-        </div>
-        
-        {videos.length === 0 ? (
-          <p>Nessun video trovato. Chiedi all'admin di caricarne uno!</p>
-        ) : videos.filter(video => 
-          (video.titolo.toLowerCase().includes(ricerca.toLowerCase()) ||
-          (video.descrizione && video.descrizione.toLowerCase().includes(ricerca.toLowerCase()))) &&
-          (livelloDifficolta === '' || video.livelloDifficolta === livelloDifficolta)
-        ).length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#999', marginTop: '40px' }}>Nessun video corrisponde ai filtri selezionati</p>
-        ) : (
-          <div style={{ display: 'grid', gap: '30px' }}>
-            {videos.filter(video => 
-              (video.titolo.toLowerCase().includes(ricerca.toLowerCase()) ||
-              (video.descrizione && video.descrizione.toLowerCase().includes(ricerca.toLowerCase()))) &&
-              (livelloDifficolta === '' || video.livelloDifficolta === livelloDifficolta)
-            ).map(video => (
-              <div key={video._id} style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'white' }}>
-                {/* VIDEO CARD */}
-                <div style={{ padding: '20px' }}>
-                  <VideoCard 
-                  video={video} 
-                  savedWords={savedWords} 
-                  onToggleSave={onToggleSave} 
-                  />
-                </div>
+            {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(livello => (
+                <button
+                key={livello}
+                onClick={() => setLivelloDifficolta(livello)}
+                style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: livelloDifficolta === livello ? '2px solid #2563eb' : '2px solid #e5e7eb',
+                    backgroundColor: livelloDifficolta === livello ? '#2563eb' : 'white',
+                    color: livelloDifficolta === livello ? 'white' : '#1f2937',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    transition: 'all 0.3s'
+                }}
+                >
+                {livello}
+                </button>
+            ))}
+            </div>
+          </>
+        )}
 
-                {/* SEZIONE COMMENTI */}
-                <div style={{ borderTop: '2px solid #e0e0e0', padding: '20px', backgroundColor: '#f9fafb' }}>
-                  <h3 style={{ color: '#1f2937', marginBottom: '15px', marginTop: '0' }}>Commenti ({(commentiPerVideo[video._id] || []).length})</h3>
+        {/* GRID LAYOUT */}
+        {!selectedVideo && (
+          contentToDisplay.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>
+              {viewMode === 'MOVIES' ? "Nessun video trovato." : "Nessuna serie trovata."}
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px', animation: 'fadeIn 0.5s ease' }}>
+              {contentToDisplay.map(item => (
+                <div 
+                  key={item._id} 
+                  onClick={() => handleCardClick(item)}
+                  style={{ 
+                    backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', 
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', position: 'relative'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-5px)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  {/* Badge SERIE */}
+                  {item.type === 'SERIES' && (
+                    <div style={{ position: 'absolute', top: 10, left: 10, background: '#9333ea', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 10, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                      SERIE • {item.count} EP
+                    </div>
+                  )}
+
+                  <div style={{ 
+                    height: '160px', 
+                    background: item.mainVideo.copertina 
+                      ? `url("${item.mainVideo.copertina}") center/cover no-repeat` 
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative'
+                  }}>
+                      <div style={{position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)'}}></div>
+                      <span style={{ fontSize: '3rem', color: 'rgba(255,255,255,0.9)', zIndex: 2, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
+                        {item.type === 'SERIES' ? '≣' : '▶'}
+                      </span>
+                      <span style={{ position: 'absolute', top: '10px', right: '10px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', zIndex: 2 }}>
+                       {item.mainVideo.livelloDifficolta}
+                      </span>
+                  </div>
                   
-                  {/* FORM PER NUOVO COMMENTO */}
-                  <form onSubmit={(e) => handleInviaCommento(video._id, e)} style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', border: '1px solid #d1d5db' }}>
-                    <textarea
-                      value={nuovoCommentoPerVideo[video._id] || ''}
-                      onChange={(e) => setNuovoCommentoPerVideo(prev => ({ ...prev, [video._id]: e.target.value }))}
-                      placeholder="Scrivi un commento..."
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        borderRadius: '6px',
-                        border: '1px solid #d1d5db',
-                        fontFamily: 'Arial, sans-serif',
-                        fontSize: '0.95em',
-                        resize: 'vertical',
-                        minHeight: '80px',
-                        boxSizing: 'border-box',
-                        marginBottom: '10px'
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      style={{
-                        backgroundColor: '#2563eb',
-                        color: 'white',
-                        padding: '8px 16px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        fontSize: '0.95em',
-                        transition: 'background-color 0.3s'
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = '#2563eb'}
-                    >
-                      Invia Commento
-                    </button>
-                  </form>
-
-                  {/* LISTA COMMENTI */}
-                  <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                    {caricandoCommenti[video._id] ? (
-                      <p style={{ color: '#999', textAlign: 'center' }}>Caricamento commenti...</p>
-                    ) : (commentiPerVideo[video._id] || []).length === 0 ? (
-                      <p style={{ color: '#999', textAlign: 'center', fontStyle: 'italic' }}>Nessun commento ancora. Sii il primo a commentare!</p>
-                    ) : (
-                      (commentiPerVideo[video._id] || []).map((commento) => (
-                        <div key={commento._id}>
-                          {/* COMMENTO PRINCIPALE */}
-                          <div
-                            style={{
-                              backgroundColor: 'white',
-                              padding: '12px',
-                              marginBottom: '8px',
-                              borderRadius: '6px',
-                              border: '1px solid #e5e7eb',
-                              borderLeft: '4px solid #2563eb'
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-                              <span style={{ fontWeight: '600', color: '#1f2937' }}>
-                                {commento.utenteId?.nome || 'Utente Anonimo'}
-                              </span>
-                              <span style={{ fontSize: '0.85em', color: '#999' }}>
-                                {new Date(commento.dataCreazione).toLocaleDateString('it-IT')}
-                              </span>
-                            </div>
-                            <p style={{ margin: '0 0 10px 0', color: '#4b5563', lineHeight: '1.5', wordWrap: 'break-word' }}>
-                              {commento.testo}
-                            </p>
-                            
-                            {/* LIKE E RISPOSTE */}
-                            <div style={{ display: 'flex', gap: '15px', fontSize: '0.9em' }}>
-                              <button
-                                onClick={() => handleToggleLike(commento._id)}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: likedCommenti[commento._id] ? '#ef4444' : '#999',
-                                  cursor: 'pointer',
-                                  padding: '0',
-                                  fontWeight: likedCommenti[commento._id] ? '600' : '400',
-                                  fontSize: '0.9em'
-                                }}
-                              >
-                                ❤️ {commento.like?.length || 0}
-                              </button>
-                              <button
-                                onClick={() => setRisposteVisibili(prev => ({ ...prev, [commento._id]: !prev[commento._id] }))}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: '#2563eb',
-                                  cursor: 'pointer',
-                                  padding: '0',
-                                  textDecoration: 'underline',
-                                  fontSize: '0.9em'
-                                }}
-                              >
-                                {risposteVisibili[commento._id] ? 'Nascondi risposte' : `Risposte (${(commento.risposte || []).length})`}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* RISPOSTE */}
-                          {risposteVisibili[commento._id] && (
-                            <div style={{ marginLeft: '20px', marginBottom: '12px' }}>
-                              {/* FORM RISPOSTA */}
-                              <form
-                                onSubmit={(e) => handleInviaRisposta(video._id, commento._id, e)}
-                                style={{
-                                  backgroundColor: '#f3f4f6',
-                                  padding: '10px',
-                                  borderRadius: '6px',
-                                  marginBottom: '10px',
-                                  border: '1px solid #d1d5db'
-                                }}
-                              >
-                                <textarea
-                                  value={nuovaRispostaPerCommento[commento._id] || ''}
-                                  onChange={(e) => setNuovaRispostaPerCommento(prev => ({ ...prev, [commento._id]: e.target.value }))}
-                                  placeholder="Rispondi a questo commento..."
-                                  style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    borderRadius: '4px',
-                                    border: '1px solid #d1d5db',
-                                    fontFamily: 'Arial, sans-serif',
-                                    fontSize: '0.9em',
-                                    resize: 'vertical',
-                                    minHeight: '60px',
-                                    boxSizing: 'border-box',
-                                    marginBottom: '8px'
-                                  }}
-                                />
-                                <button
-                                  type="submit"
-                                  style={{
-                                    backgroundColor: '#059669',
-                                    color: 'white',
-                                    padding: '6px 12px',
-                                    borderRadius: '4px',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    fontWeight: '600',
-                                    fontSize: '0.85em',
-                                    transition: 'background-color 0.3s'
-                                  }}
-                                  onMouseEnter={(e) => e.target.style.backgroundColor = '#047857'}
-                                  onMouseLeave={(e) => e.target.style.backgroundColor = '#059669'}
-                                >
-                                  Invia Risposta
-                                </button>
-                              </form>
-
-                              {/* LISTA RISPOSTE */}
-                              {(commento.risposte || []).map((risposta) => (
-                                <div
-                                  key={risposta._id}
-                                  style={{
-                                    backgroundColor: 'white',
-                                    padding: '10px',
-                                    marginBottom: '8px',
-                                    borderRadius: '4px',
-                                    border: '1px solid #e5e7eb',
-                                    borderLeft: '3px solid #059669',
-                                    fontSize: '0.95em'
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-                                    <span style={{ fontWeight: '600', color: '#1f2937' }}>
-                                      {risposta.utenteId?.nome || 'Utente Anonimo'}
-                                    </span>
-                                    <span style={{ fontSize: '0.8em', color: '#999' }}>
-                                      {new Date(risposta.dataCreazione).toLocaleDateString('it-IT')}
-                                    </span>
-                                  </div>
-                                  <p style={{ margin: '0 0 8px 0', color: '#4b5563', lineHeight: '1.5', wordWrap: 'break-word' }}>
-                                    {risposta.testo}
-                                  </p>
-                                  <button
-                                    onClick={() => handleToggleLike(risposta._id)}
-                                    style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      color: likedCommenti[risposta._id] ? '#ef4444' : '#999',
-                                      cursor: 'pointer',
-                                      padding: '0',
-                                      fontWeight: likedCommenti[risposta._id] ? '600' : '400',
-                                      fontSize: '0.85em'
-                                    }}
-                                  >
-                                    ❤️ {risposta.like?.length || 0}
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
+                  <div style={{ padding: '20px', flex: 1 }}>
+                    <h3 style={{ margin: '0 0 10px 0', fontSize: '1.1rem', color: '#1f2937' }}>
+                      {item.type === 'SERIES' ? item.serie : item.mainVideo.titolo}
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#6b7280', display: '-webkit-box', WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {item.mainVideo.descrizione || "Nessuna descrizione."}
+                    </p>
                   </div>
                 </div>
+              ))}
+            </div>
+          )
+        )}
+
+        {/* MODAL PLAYER & EPISODES */}
+        {selectedVideo && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+            backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 1000, overflowY: 'auto',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0'
+          }}>
+            
+            <button 
+              onClick={() => setSelectedVideo(null)}
+              style={{ position: 'fixed', top: '20px', right: '30px', background: 'transparent', border: 'none', color: 'white', fontSize: '2.5rem', cursor: 'pointer', zIndex: 1002 }}
+            >
+              &times;
+            </button>
+
+            <div style={{ 
+              width: '95%', maxWidth: '1200px', backgroundColor: 'white', borderRadius: '12px', 
+              overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '0',
+              animation: 'slideUp 0.3s ease-out'
+            }}>
+              
+              <div style={{ display: 'flex', flexDirection: window.innerWidth < 900 ? 'column' : 'row' }}>
+                
+                {/* COLONNA SINISTRA: Player e Info */}
+                <div style={{ flex: 3, borderRight: '1px solid #e5e7eb' }}>
+                  <div style={{ backgroundColor: '#000' }}>
+                     {/* QUI PASSIAMO LE PROPS PER LA STELLA */}
+                     <VideoCard 
+                        key={selectedVideo._id} 
+                        video={selectedVideo} 
+                        savedWords={savedWords} 
+                        onToggleSave={onToggleSave}
+                     />
+                  </div>
+                  
+                  <div style={{ padding: '30px' }}>
+                    <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '20px', marginBottom: '20px' }}>
+                        {selectedVideo.serie && (
+                          <div style={{ color: '#9333ea', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '5px', textTransform: 'uppercase' }}>
+                            {selectedVideo.serie} • Ep. {selectedVideo.episodio}
+                          </div>
+                        )}
+                        <h2 style={{ margin: '0 0 10px 0', fontSize: '1.8rem' }}>{selectedVideo.titolo}</h2>
+                        <p style={{ color: '#4b5563', lineHeight: '1.6' }}>{selectedVideo.descrizione}</p>
+                    </div>
+
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>Commenti</h3>
+                    <form onSubmit={(e) => handleInviaCommento(selectedVideo._id, e)} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                      <input 
+                        value={nuovoCommentoPerVideo[selectedVideo._id] || ''}
+                        onChange={(e) => setNuovoCommentoPerVideo(prev => ({ ...prev, [selectedVideo._id]: e.target.value }))}
+                        placeholder="Aggiungi un commento..."
+                        style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+                      />
+                      <button type="submit" style={{ background: '#2563eb', color: 'white', border: 'none', padding: '0 20px', borderRadius: '6px', cursor: 'pointer' }}>Invia</button>
+                    </form>
+
+                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                      {(commentiPerVideo[selectedVideo._id] || []).map(c => (
+                        <div key={c._id} style={{ marginBottom: '15px', background: '#f9fafb', padding: '10px', borderRadius: '8px' }}>
+                           <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{c.utenteId?.nome || 'User'}</div>
+                           <div style={{ margin: '4px 0', color: '#374151' }}>{c.testo}</div>
+                           <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                             <span onClick={() => handleToggleLike(c._id)} style={{ cursor: 'pointer' }}>❤️ {c.like?.length || 0}</span>
+                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* COLONNA DESTRA: Lista Episodi (Solo se Serie) */}
+                {relatedEpisodes.length > 0 && (
+                  <div style={{ flex: 1, backgroundColor: '#f3f4f6', borderLeft: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', maxHeight: '100vh' }}>
+                    <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', background: 'white' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Episodi</h3>
+                      <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>{selectedVideo.serie}</span>
+                    </div>
+                    <div style={{ overflowY: 'auto', flex: 1, padding: '10px' }}>
+                      {relatedEpisodes.map(ep => (
+                        <div 
+                          key={ep._id} 
+                          onClick={() => setSelectedVideo(ep)}
+                          style={{ 
+                            padding: '10px', marginBottom: '10px', borderRadius: '6px', cursor: 'pointer',
+                            backgroundColor: selectedVideo._id === ep._id ? '#e0e7ff' : 'white',
+                            border: selectedVideo._id === ep._id ? '1px solid #6366f1' : '1px solid #e5e7eb',
+                            display: 'flex', gap: '10px', alignItems: 'center'
+                          }}
+                        >
+                          <div style={{ fontWeight: 'bold', color: '#6b7280', fontSize: '0.9rem' }}>{ep.episodio}.</div>
+                          <div style={{ flex: 1 }}>
+                             <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1f2937' }}>{ep.titolo}</div>
+                             <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{ep.durataSecondi ? `${Math.floor(ep.durataSecondi / 60)} min` : ''}</div>
+                          </div>
+                          {selectedVideo._id === ep._id && <span style={{color: '#2563eb'}}>▶</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
+            </div>
+            <style>{`
+              @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+              @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            `}</style>
           </div>
         )}
       </div>

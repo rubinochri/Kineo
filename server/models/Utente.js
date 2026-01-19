@@ -1,14 +1,18 @@
 const mongoose = require('mongoose');
 
-// --- SCHEMA PER IL DIZIONARIO PERSONALE (Nuovo) ---
+// --- SCHEMA PER IL DIZIONARIO PERSONALE (Aggiornato) ---
 const ParolaSalvataSchema = new mongoose.Schema({
   original: { type: String, required: true },
   translation: { type: String, required: true },
   type: { type: String, default: 'Generic' },
-  date: { type: Date, default: Date.now }
+  date: { type: Date, default: Date.now },
+  
+  // --- NUOVI CAMPI AGGIUNTI ---
+  notes: { type: String, default: '' },       // Qui salviamo gli appunti
+  learned: { type: Boolean, default: false }  // Qui salviamo se è verde (imparata) o rossa
 });
 
-// --- SOTTO-SCHEMA: ELEMENTO VOCABOLARIO (Vecchio - lo lasciamo per compatibilità) ---
+// --- SOTTO-SCHEMA: ELEMENTO VOCABOLARIO (Vecchio - compatibilità) ---
 const ElementoVocabolarioSchema = new mongoose.Schema({
   approfondimentoId: { type: mongoose.Schema.Types.ObjectId, required: true },
   notePersonali: { type: String, trim: true },

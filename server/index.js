@@ -51,7 +51,7 @@ app.post('/api/translate', async (req, res) => {
 
 // --- VIDEO ---
 
-// PATCH /api/videos/:id/segmenti
+// PATCH /api/videos/:id/segmenti (Aggiorna solo i sottotitoli)
 app.patch('/api/videos/:id/segmenti', async (req, res) => {
   try {
     const { segmenti } = req.body; 
@@ -67,6 +67,28 @@ app.patch('/api/videos/:id/segmenti', async (req, res) => {
     );
 
     if (!videoAggiornato) return res.status(404).json({ message: 'Video non trovato' });
+
+    res.json(videoAggiornato);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// PATCH /api/videos/:id (Aggiorna dati generici: copertina, titolo, ecc.)
+app.patch('/api/videos/:id', async (req, res) => {
+  try {
+    const updates = req.body;
+    const options = { new: true, runValidators: true }; 
+
+    const videoAggiornato = await Video.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      options
+    );
+
+    if (!videoAggiornato) {
+      return res.status(404).json({ message: "Video non trovato" });
+    }
 
     res.json(videoAggiornato);
   } catch (err) {
@@ -156,7 +178,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// POST /api/login (NUOVA ROTTA)
+// POST /api/login
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -270,7 +292,6 @@ app.put('/api/user/:id', async (req, res) => {
   }
 });
 
-//AGGIUNTE PER FAR PASSARE PAROLE A DIZIONARIO
 // --- DIZIONARIO PERSONALE (Salvataggio su DB) ---
 
 // 1. GET Dizionario: Ottieni tutte le parole salvate dall'utente
@@ -291,7 +312,7 @@ app.get('/api/user/:id/dizionario', async (req, res) => {
 // 2. POST Dizionario: Aggiungi una parola
 app.post('/api/user/:id/dizionario', async (req, res) => {
   try {
-    const { original, translation, type } = req.body;
+    const { original, translation, type, notes, learned } = req.body;
     
     // Trova l'utente
     const user = await Utente.findById(req.params.id);
@@ -306,8 +327,15 @@ app.post('/api/user/:id/dizionario', async (req, res) => {
       return res.status(400).json({ msg: "Parola già presente nel dizionario" });
     }
 
-    // Aggiungi la parola
-    user.dizionario.push({ original, translation, type });
+    // Aggiungi la parola (con i nuovi campi notes e learned opzionali)
+    user.dizionario.push({ 
+        original, 
+        translation, 
+        type,
+        notes: notes || '',
+        learned: learned || false 
+    });
+    
     await user.save();
 
     // Restituisci il dizionario aggiornato
@@ -339,7 +367,36 @@ app.delete('/api/user/:id/dizionario/:wordId', async (req, res) => {
   }
 });
 
-//FINE PARTE PER DIZIONARIO
+// 4. PUT Dizionario: AGGIORNA una parola (Note o Stato Imparato) [NUOVA ROTTA]
+app.put('/api/user/:id/dizionario/:wordId', async (req, res) => {
+    try {
+      const { notes, learned } = req.body;
+      const { wordId } = req.params;
+  
+      const user = await Utente.findById(req.params.id);
+      if (!user) return res.status(404).json({ msg: "Utente non trovato" });
+  
+      // Trova la sotto-documento parola specifica
+      const parola = user.dizionario.id(wordId);
+      
+      if (!parola) {
+        return res.status(404).json({ msg: "Parola non trovata nel dizionario" });
+      }
+  
+      // Aggiorna i campi solo se sono stati inviati
+      if (notes !== undefined) parola.notes = notes;
+      if (learned !== undefined) parola.learned = learned;
+  
+      await user.save();
+  
+      const paroleAggiornate = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
+      res.json(paroleAggiornate);
+  
+    } catch (err) {
+      console.error("Errore PUT dizionario:", err);
+      res.status(500).json({ msg: "Errore server" });
+    }
+  });
 
 // --- COMMENTI ---
 
