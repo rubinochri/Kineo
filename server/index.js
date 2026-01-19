@@ -74,11 +74,11 @@ app.patch('/api/videos/:id/segmenti', async (req, res) => {
   }
 });
 
-// PATCH /api/videos/:id (Aggiorna dati generici: copertina, titolo, ecc.) - NUOVA ROTTA AGGIUNTA
+// PATCH /api/videos/:id (Aggiorna dati generici: copertina, titolo, ecc.)
 app.patch('/api/videos/:id', async (req, res) => {
   try {
     const updates = req.body;
-    const options = { new: true, runValidators: true }; // Restituisce il doc aggiornato e valida i dati
+    const options = { new: true, runValidators: true }; 
 
     const videoAggiornato = await Video.findByIdAndUpdate(
       req.params.id,
@@ -291,6 +291,112 @@ app.put('/api/user/:id', async (req, res) => {
     res.status(500).json({ msg: "Errore server." });
   }
 });
+
+// --- DIZIONARIO PERSONALE (Salvataggio su DB) ---
+
+// 1. GET Dizionario: Ottieni tutte le parole salvate dall'utente
+app.get('/api/user/:id/dizionario', async (req, res) => {
+  try {
+    const user = await Utente.findById(req.params.id);
+    if (!user) return res.status(404).json({ msg: "Utente non trovato" });
+    
+    // Ordina per data (le più recenti in alto)
+    const parole = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(parole);
+  } catch (err) {
+    console.error("Errore GET dizionario:", err);
+    res.status(500).json({ msg: "Errore server" });
+  }
+});
+
+// 2. POST Dizionario: Aggiungi una parola
+app.post('/api/user/:id/dizionario', async (req, res) => {
+  try {
+    const { original, translation, type, notes, learned } = req.body;
+    
+    // Trova l'utente
+    const user = await Utente.findById(req.params.id);
+    if (!user) return res.status(404).json({ msg: "Utente non trovato" });
+
+    // Controlla se la parola esiste già (case insensitive)
+    const esisteGia = user.dizionario.find(
+      w => w.original.toLowerCase() === original.toLowerCase()
+    );
+
+    if (esisteGia) {
+      return res.status(400).json({ msg: "Parola già presente nel dizionario" });
+    }
+
+    // Aggiungi la parola (con i nuovi campi notes e learned opzionali)
+    user.dizionario.push({ 
+        original, 
+        translation, 
+        type,
+        notes: notes || '',
+        learned: learned || false 
+    });
+    
+    await user.save();
+
+    // Restituisci il dizionario aggiornato
+    const paroleAggiornate = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(paroleAggiornate);
+
+  } catch (err) {
+    console.error("Errore POST dizionario:", err);
+    res.status(500).json({ msg: "Errore server" });
+  }
+});
+
+// 3. DELETE Dizionario: Rimuovi una parola
+app.delete('/api/user/:id/dizionario/:wordId', async (req, res) => {
+  try {
+    const user = await Utente.findById(req.params.id);
+    if (!user) return res.status(404).json({ msg: "Utente non trovato" });
+
+    // Rimuovi la parola dall'array usando il suo ID
+    user.dizionario.pull({ _id: req.params.wordId });
+    await user.save();
+
+    const paroleAggiornate = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(paroleAggiornate);
+
+  } catch (err) {
+    console.error("Errore DELETE dizionario:", err);
+    res.status(500).json({ msg: "Errore server" });
+  }
+});
+
+// 4. PUT Dizionario: AGGIORNA una parola (Note o Stato Imparato) [NUOVA ROTTA]
+app.put('/api/user/:id/dizionario/:wordId', async (req, res) => {
+    try {
+      const { notes, learned } = req.body;
+      const { wordId } = req.params;
+  
+      const user = await Utente.findById(req.params.id);
+      if (!user) return res.status(404).json({ msg: "Utente non trovato" });
+  
+      // Trova la sotto-documento parola specifica
+      const parola = user.dizionario.id(wordId);
+      
+      if (!parola) {
+        return res.status(404).json({ msg: "Parola non trovata nel dizionario" });
+      }
+  
+      // Aggiorna i campi solo se sono stati inviati
+      if (notes !== undefined) parola.notes = notes;
+      if (learned !== undefined) parola.learned = learned;
+  
+      await user.save();
+  
+      const paroleAggiornate = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
+      res.json(paroleAggiornate);
+  
+    } catch (err) {
+      console.error("Errore PUT dizionario:", err);
+      res.status(500).json({ msg: "Errore server" });
+    }
+  });
 
 // --- COMMENTI ---
 

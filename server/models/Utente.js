@@ -1,6 +1,18 @@
 const mongoose = require('mongoose');
 
-// --- SOTTO-SCHEMA: ELEMENTO VOCABOLARIO ---
+// --- SCHEMA PER IL DIZIONARIO PERSONALE (Aggiornato) ---
+const ParolaSalvataSchema = new mongoose.Schema({
+  original: { type: String, required: true },
+  translation: { type: String, required: true },
+  type: { type: String, default: 'Generic' },
+  date: { type: Date, default: Date.now },
+  
+  // --- NUOVI CAMPI AGGIUNTI ---
+  notes: { type: String, default: '' },       // Qui salviamo gli appunti
+  learned: { type: Boolean, default: false }  // Qui salviamo se è verde (imparata) o rossa
+});
+
+// --- SOTTO-SCHEMA: ELEMENTO VOCABOLARIO (Vecchio - compatibilità) ---
 const ElementoVocabolarioSchema = new mongoose.Schema({
   approfondimentoId: { type: mongoose.Schema.Types.ObjectId, required: true },
   notePersonali: { type: String, trim: true },
@@ -27,7 +39,6 @@ const UtenteSchema = new mongoose.Schema({
     maxlength: 255
   },
 
-  // *** AGGIUNTA FONDAMENTALE ***
   username: {
     type: String,
     required: true, 
@@ -35,7 +46,6 @@ const UtenteSchema = new mongoose.Schema({
     trim: true,
     minlength: 3
   },
-  // *****************************
 
   email: {
     type: String,
@@ -61,6 +71,10 @@ const UtenteSchema = new mongoose.Schema({
     default: Date.now
   },
 
+  // Qui salviamo le parole del dizionario
+  dizionario: [ParolaSalvataSchema],
+  
+  // Manteniamo anche il vecchio campo se serviva a qualcosa
   vocabolario: [ElementoVocabolarioSchema]
 });
 

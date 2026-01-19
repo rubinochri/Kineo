@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import VideoCard from './VideoCard'; 
 
-export default function VideoLibrary() {
+export default function VideoLibrary({ savedWords, onToggleSave }) {
   const navigate = useNavigate();
   const [videos, setVideos] = useState([]);
   const [user, setUser] = useState(null);
@@ -12,7 +12,7 @@ export default function VideoLibrary() {
   const [commentiPerVideo, setCommentiPerVideo] = useState({});
   const [nuovoCommentoPerVideo, setNuovoCommentoPerVideo] = useState({});
   const [caricandoCommenti, setCaricandoCommenti] = useState({});
-  const [risposteVisibili, setRisposteVisibili] = useState({});
+  // const [risposteVisibili, setRisposteVisibili] = useState({}); // Non usato al momento ma mantenuto per compatibilità
   const [nuovaRispostaPerCommento, setNuovaRispostaPerCommento] = useState({});
   const [likedCommenti, setLikedCommenti] = useState({});
   
@@ -120,23 +120,6 @@ export default function VideoLibrary() {
     } catch (err) { console.error(err); alert("Errore invio commento"); }
   };
 
-  const handleInviaRisposta = async (videoId, parentId, e) => {
-    e.preventDefault();
-    const testo = nuovaRispostaPerCommento[parentId]?.trim();
-    if (!testo) return;
-    
-    try {
-      const res = await axios.post('http://localhost:5001/api/commenti', {
-        utenteId: user.id, videoId, testo, parentCommentoId: parentId
-      });
-      setCommentiPerVideo(prev => {
-        const updated = prev[videoId].map(c => c._id === parentId ? { ...c, risposte: [...(c.risposte || []), res.data] } : c);
-        return { ...prev, [videoId]: updated };
-      });
-      setNuovaRispostaPerCommento(prev => ({ ...prev, [parentId]: '' }));
-    } catch (err) { console.error(err); }
-  };
-
   const handleToggleLike = async (commentoId) => {
     try {
       await axios.put(`http://localhost:5001/api/commenti/${commentoId}/like`, { utenteId: user.id });
@@ -151,45 +134,103 @@ export default function VideoLibrary() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
       
-      {/* NAVBAR */}
-      <nav style={{ display: 'flex', alignItems: 'center', padding: '15px 30px', background: 'white', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 90 }}>
+      {/* --- NAVBAR --- */}
+      {/* Ho mantenuto la TUA versione perché contiene il tasto per il Dizionario */}
+      <nav style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: '15px 30px', 
+        background: 'white', 
+        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+        position: 'sticky', top: 0, zIndex: 100
+      }}>
         
-        {/* SINISTRA: Logo */}
-        <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', background: 'linear-gradient(to right, #2563eb, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', width: 'fit-content' }}>
-            Kineo
+        {/* 1. SINISTRA: Tasto Dizionario (Tuo Design) */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+            <Link to="/dizionario" style={{ textDecoration: 'none' }}>
+                <button style={{
+                    background: 'linear-gradient(180deg, #eebb58 0%, #c49128 100%)', 
+                    color: '#2d1e0f',
+                    border: '1px solid #b68523',
+                    padding: '10px 20px',
+                    borderRadius: '50px',
+                    fontWeight: 'bold',
+                    fontSize: '0.95rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    transition: 'transform 0.1s'
+                }}
+                onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
+                onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
+                >
+                    📖 Il mio dizionario
+                    <span style={{ 
+                        backgroundColor: '#fff', 
+                        color: '#c49128', 
+                        borderRadius: '50%', 
+                        padding: '2px 6px', 
+                        fontSize: '0.8rem',
+                        fontWeight: '800'
+                    }}>
+                        {savedWords ? savedWords.length : 0}
+                    </span>
+                </button>
+            </Link>
+        </div>
+
+        {/* 2. CENTRO: Logo Kineo */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+            <div style={{ 
+                fontSize: '2rem', 
+                fontWeight: 'bold', 
+                background: 'linear-gradient(to right, #2563eb, #9333ea)', 
+                WebkitBackgroundClip: 'text', 
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: '-1px'
+            }}>
+              Kineo
             </div>
         </div>
 
-        {/* CENTRO: Titolo Catalogo */}
-        <div style={{ flex: 1, textAlign: 'center', fontSize: '1.4rem', fontWeight: 'bold', color: '#374151' }}>
-            Catalogo
-        </div>
-
-        {/* DESTRA: Profilo Utente */}
+        {/* 3. DESTRA: Profilo Utente */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
             <Link to="/dashboard" style={{ textDecoration: 'none', color: '#333', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{user.name}</span>
-            <div style={{ width: '40px', height: '40px', background: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4338ca' }}>
-                {/* Omino stilizzato SVG */}
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-            </div>
+              <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{user.name}</span>
+              <div style={{ 
+                  width: '40px', height: '40px', 
+                  background: '#e0e7ff', borderRadius: '50%', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                  color: '#4338ca', border: '1px solid #c7d2fe'
+              }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
             </Link>
         </div>
       </nav>
 
+      {/* --- BODY PRINCIPALE --- */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px 20px' }}>
         
         {/* HEADER CONTROLS (Solo se no modale) */}
         {!selectedVideo && (
           <>
-            {/* Titolo H2 rimosso come richiesto (spostato in navbar) */}
+            <h2 style={{ marginBottom: '20px', color: '#1f2937', textAlign: 'center' }}>Catalogo Video</h2>
             
-            {/* --- SLIDER TOGGLE --- */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px', marginBottom: '30px' }}>
+            {/* 1. RICERCA (Nuova Feature dei colleghi) */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+                 <input
+                    type="text"
+                    value={ricerca}
+                    onChange={(e) => setRicerca(e.target.value)}
+                    placeholder={viewMode === 'MOVIES' ? "Cerca film..." : "Cerca serie..."}
+                    style={{ width: '100%', maxWidth: '500px', padding: '12px 16px', borderRadius: '30px', border: '2px solid #e5e7eb', fontSize: '1rem', outline: 'none' }}
+                 />
+            </div>
+
+            {/* 2. SLIDER TOGGLE (Tua Feature) */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
               <div style={{ 
                 position: 'relative', display: 'flex', backgroundColor: '#e5e7eb', 
                 borderRadius: '30px', padding: '4px', width: '250px', height: '40px',
@@ -229,21 +270,42 @@ export default function VideoLibrary() {
               </div>
             </div>
 
-            {/* RICERCA & FILTRI */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
-              <input
-                type="text"
-                value={ricerca}
-                onChange={(e) => setRicerca(e.target.value)}
-                placeholder={viewMode === 'MOVIES' ? "Cerca film..." : "Cerca serie..."}
-                style={{ width: '100%', maxWidth: '500px', padding: '12px 16px', borderRadius: '8px', border: '2px solid #e5e7eb', fontSize: '1rem' }}
-              />
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button onClick={() => setLivelloDifficolta('')} style={{ padding: '6px 14px', borderRadius: '20px', border: 'none', backgroundColor: livelloDifficolta === '' ? (viewMode === 'MOVIES' ? '#2563eb' : '#9333ea') : '#e5e7eb', color: livelloDifficolta === '' ? 'white' : '#4b5563', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s' }}>Tutti</button>
-                {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(lvl => (
-                  <button key={lvl} onClick={() => setLivelloDifficolta(lvl)} style={{ padding: '6px 14px', borderRadius: '20px', border: 'none', backgroundColor: livelloDifficolta === lvl ? (viewMode === 'MOVIES' ? '#2563eb' : '#9333ea') : '#e5e7eb', color: livelloDifficolta === lvl ? 'white' : '#4b5563', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s' }}>{lvl}</button>
-                ))}
-              </div>
+            {/* 3. FILTRO LIVELLO (Tua Feature) */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: '600', color: '#1f2937', alignSelf: 'center' }}>Livello:</span>
+            <button
+                onClick={() => setLivelloDifficolta('')}
+                style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: livelloDifficolta === '' ? '2px solid #2563eb' : '2px solid #e5e7eb',
+                backgroundColor: livelloDifficolta === '' ? '#2563eb' : 'white',
+                color: livelloDifficolta === '' ? 'white' : '#1f2937',
+                cursor: 'pointer',
+                fontWeight: '600',
+                transition: 'all 0.3s'
+                }}
+            >
+                Tutti
+            </button>
+            {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(livello => (
+                <button
+                key={livello}
+                onClick={() => setLivelloDifficolta(livello)}
+                style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: livelloDifficolta === livello ? '2px solid #2563eb' : '2px solid #e5e7eb',
+                    backgroundColor: livelloDifficolta === livello ? '#2563eb' : 'white',
+                    color: livelloDifficolta === livello ? 'white' : '#1f2937',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    transition: 'all 0.3s'
+                }}
+                >
+                {livello}
+                </button>
+            ))}
             </div>
           </>
         )}
@@ -282,13 +344,13 @@ export default function VideoLibrary() {
                       : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative'
                   }}>
-                     <div style={{position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)'}}></div>
-                     <span style={{ fontSize: '3rem', color: 'rgba(255,255,255,0.9)', zIndex: 2, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
+                      <div style={{position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)'}}></div>
+                      <span style={{ fontSize: '3rem', color: 'rgba(255,255,255,0.9)', zIndex: 2, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
                         {item.type === 'SERIES' ? '≣' : '▶'}
-                     </span>
-                     <span style={{ position: 'absolute', top: '10px', right: '10px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', zIndex: 2 }}>
+                      </span>
+                      <span style={{ position: 'absolute', top: '10px', right: '10px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', zIndex: 2 }}>
                        {item.mainVideo.livelloDifficolta}
-                     </span>
+                      </span>
                   </div>
                   
                   <div style={{ padding: '20px', flex: 1 }}>
@@ -331,18 +393,24 @@ export default function VideoLibrary() {
                 {/* COLONNA SINISTRA: Player e Info */}
                 <div style={{ flex: 3, borderRight: '1px solid #e5e7eb' }}>
                   <div style={{ backgroundColor: '#000' }}>
-                     <VideoCard key={selectedVideo._id} video={selectedVideo} />
+                     {/* QUI PASSIAMO LE PROPS PER LA STELLA */}
+                     <VideoCard 
+                        key={selectedVideo._id} 
+                        video={selectedVideo} 
+                        savedWords={savedWords} 
+                        onToggleSave={onToggleSave}
+                     />
                   </div>
                   
                   <div style={{ padding: '30px' }}>
                     <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '20px', marginBottom: '20px' }}>
-                       {selectedVideo.serie && (
-                         <div style={{ color: '#9333ea', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '5px', textTransform: 'uppercase' }}>
-                           {selectedVideo.serie} • Ep. {selectedVideo.episodio}
-                         </div>
-                       )}
-                       <h2 style={{ margin: '0 0 10px 0', fontSize: '1.8rem' }}>{selectedVideo.titolo}</h2>
-                       <p style={{ color: '#4b5563', lineHeight: '1.6' }}>{selectedVideo.descrizione}</p>
+                        {selectedVideo.serie && (
+                          <div style={{ color: '#9333ea', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '5px', textTransform: 'uppercase' }}>
+                            {selectedVideo.serie} • Ep. {selectedVideo.episodio}
+                          </div>
+                        )}
+                        <h2 style={{ margin: '0 0 10px 0', fontSize: '1.8rem' }}>{selectedVideo.titolo}</h2>
+                        <p style={{ color: '#4b5563', lineHeight: '1.6' }}>{selectedVideo.descrizione}</p>
                     </div>
 
                     <h3 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>Commenti</h3>

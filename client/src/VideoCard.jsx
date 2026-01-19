@@ -3,7 +3,12 @@ import axios from 'axios';
 import ReactPlayer from 'react-player';
 import './App.css'; // Assicurati che gli stili siano importati
 
+<<<<<<< HEAD
+// 1. MODIFICA: Aggiungo savedWords e onToggleSave alle props
+function VideoCard({ video, savedWords, onToggleSave }) {
+=======
 function VideoCard({ video, utenteId }) { // Assumo utenteId venga passato come prop o ottenuto dal context
+>>>>>>> 956305a30c7d0b21eb0ba55aea21e968493df67f
   const playerRef = useRef(null);
   const containerRef = useRef(null); // Ref per il fullscreen
   
@@ -30,11 +35,19 @@ function VideoCard({ video, utenteId }) { // Assumo utenteId venga passato come 
     }
   };
 
+<<<<<<< HEAD
+  // 2. NUOVA FUNZIONE: Controlla se la parola è già nel dizionario (per colorare la stella)
+  const isWordSaved = (text) => {
+    if (!savedWords || !text) return false;
+    return savedWords.some(w => w.original.toLowerCase() === text.toLowerCase());
+  };
+=======
   // --- SUBTITLE LOGIC ---
   // Filtra il segmento attivo in base al tempo corrente
   const currentSegment = video.segmenti?.find(
     seg => currentTime >= seg.startTime && currentTime <= seg.endTime
   );
+>>>>>>> 956305a30c7d0b21eb0ba55aea21e968493df67f
 
   const fetchTranslation = async (text, type) => {
     // Mette in pausa il video quando si cerca una parola
@@ -185,8 +198,35 @@ function VideoCard({ video, utenteId }) { // Assumo utenteId venga passato come 
             <span style={{ textTransform:'uppercase', fontSize:'0.7em', fontWeight:'bold', letterSpacing:'1px', color: tooltip.type === 'DB' ? '#f9a825' : '#007bff', backgroundColor: tooltip.type === 'DB' ? '#fff9c4' : '#e3f2fd', padding: '2px 8px', borderRadius: '10px' }}>{tooltip.meta}</span>
             <button onClick={() => setTooltip(null)} style={{border:'none', background:'transparent', cursor:'pointer', fontSize:'1.5em', lineHeight: '0.8', color: '#999'}}>&times;</button>
           </div>
-          <h3 style={{margin:'0 0 8px 0', color:'#333', fontSize: '1.3em'}}>"{tooltip.text}"</h3>
-          <p style={{margin:0, color:'#555', fontSize: '1em', lineHeight:'1.4'}}>{tooltip.translation}</p>
+          
+          {/* 3. MODIFICA: Titolo della parola + Bottone Stella */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+             <h3 style={{margin:'0', color:'#333', fontSize: '1.3em'}}>"{tooltip.text}"</h3>
+             
+             <button 
+                onClick={() => onToggleSave({ 
+                    original: tooltip.text, 
+                    translation: tooltip.translation, 
+                    type: tooltip.meta 
+                })}
+                style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer', 
+                    fontSize: '1.8em',
+                    // Se la parola è salvata diventa GIALLA, altrimenti GRIGIA
+                    color: isWordSaved(tooltip.text) ? '#fbc02d' : '#e0e0e0',
+                    transition: 'color 0.2s'
+                }}
+                title={isWordSaved(tooltip.text) ? "Rimuovi dal dizionario" : "Salva nel dizionario"}
+             >
+                {/* Mostra stella piena o vuota */}
+                {isWordSaved(tooltip.text) ? '★' : '☆'}
+             </button>
+          </div>
+
+          <p style={{margin:'5px 0 0', color:'#555', fontSize: '1em', lineHeight:'1.4'}}>{tooltip.translation}</p>
+          {tooltip.type !== 'DB' && (<small style={{display:'block', marginTop:'10px', color:'#ccc', fontSize:'0.7em'}}>*Da Dizionario Locale</small>)}
         </div>
       )}
 
