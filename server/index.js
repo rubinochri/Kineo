@@ -488,14 +488,42 @@ app.post('/api/commenti', async (req, res) => {
       like: []
     });
 
-    const commentoSalvato = await nuovoCommento.save();
+    await nuovoCommento.save();
     
-    // Populate dei dati utente per la risposta
-    await commentoSalvato.populate('utenteId', 'nome username');
+    // Ricarica il commento con i dati utente popolati
+    const commentoCompleto = await Commento.findById(nuovoCommento._id)
+      .populate('utenteId', 'nome username');
     
-    res.status(201).json(commentoSalvato);
+    res.status(201).json(commentoCompleto);
   } catch (err) {
     console.error("Errore POST commenti:", err);
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// PUT /api/commenti/:id (Modifica un commento) - solo proprietario
+app.put('/api/commenti/:id', async (req, res) => {
+  try {
+    const { utenteId, testo } = req.body;
+
+    if (!utenteId || testo === undefined) {
+      return res.status(400).json({ message: "utenteId e testo sono obbligatori." });
+    }
+
+    const commento = await Commento.findById(req.params.id);
+    if (!commento) return res.status(404).json({ message: "Commento non trovato." });
+
+    if (commento.utenteId.toString() !== utenteId) {
+      return res.status(403).json({ message: "Non autorizzato a modificare questo commento." });
+    }
+
+    commento.testo = testo.trim();
+    const commentoAggiornato = await commento.save();
+    await commentoAggiornato.populate('utenteId', 'nome username');
+
+    res.json(commentoAggiornato);
+  } catch (err) {
+    console.error("Errore PUT commento:", err);
     res.status(400).json({ message: err.message });
   }
 });
@@ -536,39 +564,6 @@ app.put('/api/commenti/:id/like', async (req, res) => {
   }
 });
 
-// 6. AVVIO DEL SERVER
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-  console.log(`🚀 Server avviato su http://localhost:${PORT}`);
-});
-
-// PUT /api/commenti/:id (Modifica un commento) - solo proprietario
-app.put('/api/commenti/:id', async (req, res) => {
-  try {
-    const { utenteId, testo } = req.body;
-
-    if (!utenteId || testo === undefined) {
-      return res.status(400).json({ message: "utenteId e testo sono obbligatori." });
-    }
-
-    const commento = await Commento.findById(req.params.id);
-    if (!commento) return res.status(404).json({ message: "Commento non trovato." });
-
-    if (commento.utenteId.toString() !== utenteId) {
-      return res.status(403).json({ message: "Non autorizzato a modificare questo commento." });
-    }
-
-    commento.testo = testo.trim();
-    const commentoAggiornato = await commento.save();
-    await commentoAggiornato.populate('utenteId', 'nome username');
-
-    res.json(commentoAggiornato);
-  } catch (err) {
-    console.error("Errore PUT commento:", err);
-    res.status(400).json({ message: err.message });
-  }
-});
-
 // DELETE /api/commenti/:id (Elimina un commento) - solo proprietario
 app.delete('/api/commenti/:id', async (req, res) => {
   try {
@@ -587,11 +582,17 @@ app.delete('/api/commenti/:id', async (req, res) => {
 
     // Rimuovi anche le risposte collegate
     await Commento.deleteMany({ parentCommentoId: commento._id });
-    await commento.remove();
+    await commento.deleteOne();
 
     res.json({ message: "Commento eliminato." });
   } catch (err) {
     console.error("Errore DELETE commento:", err);
     res.status(400).json({ message: err.message });
   }
+});
+
+// 6. AVVIO DEL SERVER
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  console.log(`🚀 Server avviato su http://localhost:${PORT}`);
 });

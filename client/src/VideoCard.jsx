@@ -198,19 +198,24 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
 
   const handlePostComment = async () => {
     if (!newComment.trim()) return;
+    
+    if (!currentUserId) {
+      alert("Devi essere loggato per pubblicare un commento");
+      return;
+    }
+    
     try {
         // API Call
         await axios.post('http://localhost:5001/api/commenti', {
             videoId: video._id,
-            utenteId: "guest_id", // Fallback se non autenticato
+            utenteId: currentUserId,
             testo: newComment
         });
         setNewComment("");
         fetchComments(); // Ricarica commenti
     } catch (err) {
       console.error("Errore invio commento", err);
-      // Rimosso optimistic mock: non modificare lo stato dei commenti in caso di errore
-      // Mantieni il testo nel campo per permettere il retry
+      alert("Errore nell'invio del commento: " + (err.response?.data?.message || err.message));
     }
   };
 
