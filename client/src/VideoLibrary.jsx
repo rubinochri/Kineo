@@ -12,7 +12,6 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
   const [commentiPerVideo, setCommentiPerVideo] = useState({});
   const [nuovoCommentoPerVideo, setNuovoCommentoPerVideo] = useState({});
   const [caricandoCommenti, setCaricandoCommenti] = useState({});
-  // const [risposteVisibili, setRisposteVisibili] = useState({}); // Non usato al momento ma mantenuto per compatibilità
   const [nuovaRispostaPerCommento, setNuovaRispostaPerCommento] = useState({});
   const [likedCommenti, setLikedCommenti] = useState({});
   
@@ -59,6 +58,23 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
       setCaricandoCommenti(prev => ({ ...prev, [videoId]: false }));
     }
   };
+
+  // --- 3. FIX DOPPIA SCROLLBAR ---
+  // Questo useEffect blocca la scrollbar della pagina principale (body) 
+  // quando c'è un video selezionato (la modale è aperta).
+  useEffect(() => {
+    if (selectedVideo) {
+      // Blocca lo scroll della pagina sotto e nasconde la sua barra
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Riabilita lo scroll quando chiudi il video
+      document.body.style.overflow = 'unset';
+    }
+    // Cleanup: riabilita sempre se cambi pagina
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedVideo]);
 
   // --- LOGICA FILTRO E RAGGRUPPAMENTO ---
   const getContentToDisplay = () => {
@@ -135,7 +151,6 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
       
       {/* --- NAVBAR --- */}
-      {/* Ho mantenuto la TUA versione perché contiene il tasto per il Dizionario */}
       <nav style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -146,7 +161,6 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         
-        {/* 1. SINISTRA: Tasto Dizionario (Tuo Design) */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
             <Link to="/dizionario" style={{ textDecoration: 'none' }}>
                 <button style={{
@@ -180,7 +194,6 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
             </Link>
         </div>
 
-        {/* 2. CENTRO: Logo Kineo */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
             <div style={{ 
                 fontSize: '2rem', 
@@ -194,7 +207,6 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
             </div>
         </div>
 
-        {/* 3. DESTRA: Profilo Utente */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
             <Link to="/dashboard" style={{ textDecoration: 'none', color: '#333', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{user.name}</span>
@@ -213,23 +225,21 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
       {/* --- BODY PRINCIPALE --- */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px 20px' }}>
         
-        {/* HEADER CONTROLS (Solo se no modale) */}
+        {/* HEADER CONTROLS */}
         {!selectedVideo && (
           <>
             <h2 style={{ marginBottom: '20px', color: '#1f2937', textAlign: 'center' }}>Catalogo Video</h2>
             
-            {/* 1. RICERCA (Nuova Feature dei colleghi) */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
                  <input
-                    type="text"
-                    value={ricerca}
-                    onChange={(e) => setRicerca(e.target.value)}
-                    placeholder={viewMode === 'MOVIES' ? "Cerca film..." : "Cerca serie..."}
-                    style={{ width: '100%', maxWidth: '500px', padding: '12px 16px', borderRadius: '30px', border: '2px solid #e5e7eb', fontSize: '1rem', outline: 'none' }}
+                   type="text"
+                   value={ricerca}
+                   onChange={(e) => setRicerca(e.target.value)}
+                   placeholder={viewMode === 'MOVIES' ? "Cerca film..." : "Cerca serie..."}
+                   style={{ width: '100%', maxWidth: '500px', padding: '12px 16px', borderRadius: '30px', border: '2px solid #e5e7eb', fontSize: '1rem', outline: 'none' }}
                  />
             </div>
 
-            {/* 2. SLIDER TOGGLE (Tua Feature) */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
               <div style={{ 
                 position: 'relative', display: 'flex', backgroundColor: '#e5e7eb', 
@@ -270,7 +280,6 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
               </div>
             </div>
 
-            {/* 3. FILTRO LIVELLO (Tua Feature) */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px', gap: '10px', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: '600', color: '#1f2937', alignSelf: 'center' }}>Livello:</span>
             <button
@@ -370,9 +379,10 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
         {/* MODAL PLAYER & EPISODES */}
         {selectedVideo && (
           <div style={{
-            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-            backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 1000, overflowY: 'auto',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0'
+            position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh',
+            backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 1000, 
+            overflowY: 'auto', 
+            padding: '40px 0'
           }}>
             
             <button 
@@ -382,10 +392,15 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
               &times;
             </button>
 
+            {/* Contenitore Bianco */}
             <div style={{ 
-              width: '95%', maxWidth: '1200px', backgroundColor: 'white', borderRadius: '12px', 
-              overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '0',
-              animation: 'slideUp 0.3s ease-out'
+              width: '95%', maxWidth: '1200px', 
+              backgroundColor: 'white', borderRadius: '12px', 
+              margin: '0 auto', 
+              overflow: 'hidden', 
+              display: 'flex', flexDirection: 'column', 
+              animation: 'slideUp 0.3s ease-out',
+              minHeight: 'auto'
             }}>
               
               <div style={{ display: 'flex', flexDirection: window.innerWidth < 900 ? 'column' : 'row' }}>
@@ -393,19 +408,24 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
                 {/* COLONNA SINISTRA: Player e Info */}
                 <div style={{ flex: 3, borderRight: '1px solid #e5e7eb' }}>
                   <div style={{ backgroundColor: '#000' }}>
-                     {/* QUI PASSIAMO LE PROPS PER LA STELLA */}
-                     <VideoCard 
+                      <VideoCard 
                         key={selectedVideo._id} 
                         video={selectedVideo} 
                         savedWords={savedWords} 
                         onToggleSave={onToggleSave}
-                     />
+                      />
                   </div>
                 </div>
 
                 {/* COLONNA DESTRA: Lista Episodi (Solo se Serie) */}
                 {relatedEpisodes.length > 0 && (
-                  <div style={{ flex: 1, backgroundColor: '#f3f4f6', borderLeft: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', maxHeight: '100vh' }}>
+                  <div style={{ 
+                      flex: 1, 
+                      backgroundColor: '#f3f4f6', 
+                      borderLeft: '1px solid #e5e7eb', 
+                      display: 'flex', flexDirection: 'column',
+                      maxHeight: window.innerWidth < 900 ? 'auto' : '800px'
+                  }}>
                     <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', background: 'white' }}>
                       <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Episodi</h3>
                       <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>{selectedVideo.serie}</span>
