@@ -48,4 +48,4 @@ CommentoSchema.index({ videoId: 1, dataCreazione: -1 });
 // 2. "Dammi tutte le risposte di questo commento"
 CommentoSchema.index({ parentCommentoId: 1, dataCreazione: -1 });
 
-module.exports = mongoose.model('Commento', CommentoSchema);
+module.exports = mongoose.model('Commento', CommentoSchema, 'commentos');
