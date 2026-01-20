@@ -243,6 +243,20 @@ app.get('/api/user/:id', async (req, res) => {
   }
 });
 
+// GET /api/user/:id/commenti (Ottiene tutti i commenti di un utente)
+app.get('/api/user/:id/commenti', async (req, res) => {
+  try {
+    const commenti = await Commento.find({ utenteId: req.params.id })
+      .populate('videoId', 'titolo')
+      .sort({ dataCreazione: -1 });
+    
+    res.json(commenti);
+  } catch (err) {
+    console.error("Errore GET commenti utente:", err);
+    res.status(500).json({ msg: "Errore durante il caricamento dei commenti." });
+  }
+});
+
 // PUT /api/user/:id (Aggiorna i dati dell'utente)
 app.put('/api/user/:id', async (req, res) => {
   try {
@@ -289,6 +303,33 @@ app.put('/api/user/:id', async (req, res) => {
   } catch (err) {
     console.error("Errore PUT user:", err);
     res.status(500).json({ msg: "Errore server." });
+  }
+});
+
+// DELETE /api/user/:id (Elimina l'utente e tutti i suoi dati)
+app.delete('/api/user/:id', async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Verifica che l'utente esista
+    const user = await Utente.findById(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "Utente non trovato." });
+    }
+
+    // Elimina tutti i commenti dell'utente
+    await Commento.deleteMany({ utenteId: userId });
+
+    // Elimina l'utente
+    await Utente.findByIdAndDelete(userId);
+
+    res.json({ 
+      msg: "Profilo eliminato con successo. Tutti i dati associati sono stati rimossi." 
+    });
+
+  } catch (err) {
+    console.error("Errore DELETE user:", err);
+    res.status(500).json({ msg: "Errore durante l'eliminazione del profilo." });
   }
 });
 
@@ -499,4 +540,58 @@ app.put('/api/commenti/:id/like', async (req, res) => {
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`🚀 Server avviato su http://localhost:${PORT}`);
+});
+
+// PUT /api/commenti/:id (Modifica un commento) - solo proprietario
+app.put('/api/commenti/:id', async (req, res) => {
+  try {
+    const { utenteId, testo } = req.body;
+
+    if (!utenteId || testo === undefined) {
+      return res.status(400).json({ message: "utenteId e testo sono obbligatori." });
+    }
+
+    const commento = await Commento.findById(req.params.id);
+    if (!commento) return res.status(404).json({ message: "Commento non trovato." });
+
+    if (commento.utenteId.toString() !== utenteId) {
+      return res.status(403).json({ message: "Non autorizzato a modificare questo commento." });
+    }
+
+    commento.testo = testo.trim();
+    const commentoAggiornato = await commento.save();
+    await commentoAggiornato.populate('utenteId', 'nome username');
+
+    res.json(commentoAggiornato);
+  } catch (err) {
+    console.error("Errore PUT commento:", err);
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// DELETE /api/commenti/:id (Elimina un commento) - solo proprietario
+app.delete('/api/commenti/:id', async (req, res) => {
+  try {
+    const { utenteId } = req.body;
+
+    if (!utenteId) {
+      return res.status(400).json({ message: "utenteId è obbligatorio." });
+    }
+
+    const commento = await Commento.findById(req.params.id);
+    if (!commento) return res.status(404).json({ message: "Commento non trovato." });
+
+    if (commento.utenteId.toString() !== utenteId) {
+      return res.status(403).json({ message: "Non autorizzato a eliminare questo commento." });
+    }
+
+    // Rimuovi anche le risposte collegate
+    await Commento.deleteMany({ parentCommentoId: commento._id });
+    await commento.remove();
+
+    res.json({ message: "Commento eliminato." });
+  } catch (err) {
+    console.error("Errore DELETE commento:", err);
+    res.status(400).json({ message: err.message });
+  }
 });

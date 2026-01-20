@@ -14,7 +14,7 @@ function Home() {
       </p>
       
       <div className="animate-enter delay-2" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-        <Link to="/login" className="btn btn-primary">
+        <Link to="/login" className="btn btn-primary" style={{ borderRadius: '999px' }}>
           Accedi
         </Link>
         <Link to="/register" className="btn btn-secondary">

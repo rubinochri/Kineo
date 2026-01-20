@@ -21,6 +21,9 @@ function Dashboard() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState({});
+  const [userComments, setUserComments] = useState([]);
+  const [showComments, setShowComments] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(false);
 
   // Carica i dati dell'utente al montaggio
   useEffect(() => {
@@ -121,6 +124,70 @@ function Dashboard() {
   const handleLogout = () => {
     localStorage.removeItem('userData');
     navigate('/login');
+  };
+
+  const fetchUserComments = async () => {
+    try {
+      setLoadingComments(true);
+      const res = await axios.get(`http://localhost:5001/api/user/${loggedUser.id}/commenti`);
+      setUserComments(res.data);
+      setShowComments(true);
+    } catch (err) {
+      console.error('Errore caricamento commenti:', err);
+      setMessage(`❌ Errore nel caricamento dei commenti: ${err.response?.data?.msg || 'Errore sconosciuto'}`);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleLikeComment = async (commentId) => {
+    try {
+      const res = await axios.put(`http://localhost:5001/api/commenti/${commentId}/like`, {
+        utenteId: loggedUser.id
+      });
+      
+      // Aggiorna lo stato locale del commento con i nuovi like
+      setUserComments(prev => prev.map(comment => 
+        comment._id === commentId 
+          ? { ...comment, like: res.data.like }
+          : comment
+      ));
+    } catch (err) {
+      console.error('Errore like commento:', err);
+      setMessage(`❌ Errore: ${err.response?.data?.message || 'Impossibile aggiornare il like'}`);
+    }
+  };
+
+  const handleDeleteProfile = async () => {
+    const confirmed = window.confirm(
+      '⚠️ ATTENZIONE: Questa azione eliminerà definitivamente il tuo profilo e tutti i dati associati.\n\nSei sicuro di voler procedere?'
+    );
+    
+    if (!confirmed) return;
+
+    // Seconda conferma per sicurezza
+    const doubleConfirm = window.confirm(
+      'Confermi di voler eliminare il tuo profilo? Questa azione è irreversibile.'
+    );
+    
+    if (!doubleConfirm) return;
+
+    try {
+      setLoading(true);
+      await axios.delete(`http://localhost:5001/api/user/${loggedUser.id}`);
+      
+      // Logout automatico dopo eliminazione
+      localStorage.removeItem('userData');
+      setMessage('✅ Profilo eliminato con successo');
+      
+      setTimeout(() => {
+        navigate('/login');
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+      setMessage(`❌ Errore nell'eliminazione del profilo: ${err.response?.data?.msg || 'Errore sconosciuto'}`);
+      setLoading(false);
+    }
   };
 
   if (loading && !userData) {
@@ -397,6 +464,131 @@ function Dashboard() {
         <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>ℹ️ Informazioni</p>
         <p style={{ margin: '5px 0' }}>Sei loggato come: <strong>{loggedUser?.nome}</strong></p>
         <p style={{ margin: '5px 0', fontSize: '0.9em' }}>Modifica i tuoi dati e salva le modifiche nel database.</p>
+      </div>
+
+      {/* SEZIONE COMMENTI UTENTE */}
+      <div style={{ marginTop: '30px', padding: '20px', background: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h4 style={{ margin: 0, color: '#333' }}>💬 I Tuoi Commenti</h4>
+          <button
+            onClick={() => showComments ? setShowComments(false) : fetchUserComments()}
+            disabled={loadingComments}
+            style={{
+              padding: '10px 20px',
+              background: showComments ? '#6c757d' : '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: loadingComments ? 'not-allowed' : 'pointer',
+              fontSize: '0.95em',
+              fontWeight: 'bold',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => !loadingComments && (e.target.style.background = showComments ? '#5a6268' : '#0056b3')}
+            onMouseLeave={(e) => !loadingComments && (e.target.style.background = showComments ? '#6c757d' : '#007bff')}
+          >
+            {loadingComments ? 'Caricamento...' : showComments ? '🔼 Nascondi' : '🔽 Visualizza Commenti'}
+          </button>
+        </div>
+
+        {showComments && (
+          <div>
+            {userComments.length === 0 ? (
+              <p style={{ color: '#6c757d', fontStyle: 'italic' }}>Non hai ancora scritto commenti.</p>
+            ) : (
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                {userComments.map((comment) => {
+                  const hasLiked = comment.like?.includes(loggedUser.id);
+                  const likeCount = comment.like?.length || 0;
+                  
+                  return (
+                  <div key={comment._id} style={{
+                    background: 'white',
+                    padding: '15px',
+                    marginBottom: '10px',
+                    borderRadius: '6px',
+                    border: '1px solid #e0e0e0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '0.85em', color: '#6c757d', fontWeight: 'bold' }}>
+                        Video: {comment.videoId?.titolo || 'Video eliminato'}
+                      </span>
+                      <span style={{ fontSize: '0.8em', color: '#999' }}>
+                        {new Date(comment.dataCreazione).toLocaleDateString('it-IT')}
+                      </span>
+                    </div>
+                    <p style={{ margin: '0 0 10px 0', color: '#333', lineHeight: '1.5' }}>
+                      {comment.testo}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <button
+                        onClick={() => handleLikeComment(comment._id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '6px 12px',
+                          background: hasLiked ? '#e3f2fd' : '#f8f9fa',
+                          color: hasLiked ? '#1976d2' : '#6c757d',
+                          border: `1px solid ${hasLiked ? '#1976d2' : '#dee2e6'}`,
+                          borderRadius: '20px',
+                          cursor: 'pointer',
+                          fontSize: '0.85em',
+                          fontWeight: '500',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = 'scale(1.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = 'scale(1)';
+                        }}
+                      >
+                        <span style={{ fontSize: '1.1em' }}>{hasLiked ? '❤️' : '🤍'}</span>
+                        <span>{likeCount}</span>
+                      </button>
+                      {comment.parentCommentoId && (
+                        <span style={{ fontSize: '0.75em', color: '#007bff' }}>
+                          ↳ Risposta a un commento
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ZONA PERICOLOSA - ELIMINA PROFILO */}
+      <div style={{ marginTop: '30px', padding: '20px', background: '#fff3cd', border: '2px solid #ffc107', borderRadius: '8px' }}>
+        <h4 style={{ margin: '0 0 15px 0', color: '#856404' }}>⚠️ Zona Pericolosa</h4>
+        <p style={{ margin: '0 0 15px 0', color: '#856404', fontSize: '0.95em' }}>
+          L'eliminazione del profilo è permanente e non può essere annullata. Tutti i tuoi dati verranno cancellati definitivamente.
+        </p>
+        <button
+          onClick={handleDeleteProfile}
+          disabled={loading}
+          style={{
+            padding: '12px 24px',
+            background: '#dc3545',
+            color: 'white',
+            border: '2px solid #c82333',
+            borderRadius: '4px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: '1em',
+            fontWeight: 'bold',
+            transition: 'all 0.2s',
+            opacity: loading ? 0.6 : 1
+          }}
+          onMouseEnter={(e) => !loading && (e.target.style.background = '#c82333')}
+          onMouseLeave={(e) => !loading && (e.target.style.background = '#dc3545')}
+        >
+          🗑️ Elimina Profilo
+        </button>
       </div>
     </div>
   );

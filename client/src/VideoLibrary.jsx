@@ -401,41 +401,6 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
                         onToggleSave={onToggleSave}
                      />
                   </div>
-                  
-                  <div style={{ padding: '30px' }}>
-                    <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '20px', marginBottom: '20px' }}>
-                        {selectedVideo.serie && (
-                          <div style={{ color: '#9333ea', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '5px', textTransform: 'uppercase' }}>
-                            {selectedVideo.serie} • Ep. {selectedVideo.episodio}
-                          </div>
-                        )}
-                        <h2 style={{ margin: '0 0 10px 0', fontSize: '1.8rem' }}>{selectedVideo.titolo}</h2>
-                        <p style={{ color: '#4b5563', lineHeight: '1.6' }}>{selectedVideo.descrizione}</p>
-                    </div>
-
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>Commenti</h3>
-                    <form onSubmit={(e) => handleInviaCommento(selectedVideo._id, e)} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                      <input 
-                        value={nuovoCommentoPerVideo[selectedVideo._id] || ''}
-                        onChange={(e) => setNuovoCommentoPerVideo(prev => ({ ...prev, [selectedVideo._id]: e.target.value }))}
-                        placeholder="Aggiungi un commento..."
-                        style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }}
-                      />
-                      <button type="submit" style={{ background: '#2563eb', color: 'white', border: 'none', padding: '0 20px', borderRadius: '6px', cursor: 'pointer' }}>Invia</button>
-                    </form>
-
-                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                      {(commentiPerVideo[selectedVideo._id] || []).map(c => (
-                        <div key={c._id} style={{ marginBottom: '15px', background: '#f9fafb', padding: '10px', borderRadius: '8px' }}>
-                           <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{c.utenteId?.nome || 'User'}</div>
-                           <div style={{ margin: '4px 0', color: '#374151' }}>{c.testo}</div>
-                           <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                             <span onClick={() => handleToggleLike(c._id)} style={{ cursor: 'pointer' }}>❤️ {c.like?.length || 0}</span>
-                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
 
                 {/* COLONNA DESTRA: Lista Episodi (Solo se Serie) */}
