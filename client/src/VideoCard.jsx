@@ -3,20 +3,15 @@ import axios from 'axios';
 import ReactPlayer from 'react-player';
 import './App.css'; 
 
-// 1. Componente VideoCard completo e corretto
 function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
   const playerRef = useRef(null);
-  
-  // ---------------------------------------------------------
-  // NUOVO REF: Serve per dire al browser "Manda in fullscreen QUESTO contenitore"
   const wrapperRef = useRef(null); 
-  // ---------------------------------------------------------
 
   const [tooltip, setTooltip] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   
-  // Stati per i commenti
+  // --- STATI COMMENTI ---
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [replyVisible, setReplyVisible] = useState({});
@@ -31,40 +26,75 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
     setCurrentTime(state.playedSeconds);
   };
 
-  // ---------------------------------------------------------
-  // NUOVA FUNZIONE FULLSCREEN STABILE
-  // Manda in fullscreen il wrapper (video + sottotitoli) invece che solo il video
+  // Aggiornamento frequente per file MP4
+  useEffect(() => {
+    let interval = null;
+    if (isPlaying && isDirectFile(video.url) && playerRef.current) {
+      interval = setInterval(() => {
+        if (playerRef.current) {
+          setCurrentTime(playerRef.current.currentTime);
+        }
+      }, 50); 
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPlaying, video.url]);
+
   const toggleFullscreen = () => {
     const element = wrapperRef.current; 
     if (!element) return;
-
     if (!document.fullscreenElement) {
-      if (element.requestFullscreen) {
-        element.requestFullscreen().catch(err => console.error(err));
-      } else if (element.webkitRequestFullscreen) { /* Safari/Old Chrome */
-        element.webkitRequestFullscreen();
-      }
+      if (element.requestFullscreen) element.requestFullscreen().catch(console.error);
+      else if (element.webkitRequestFullscreen) element.webkitRequestFullscreen();
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
+      if (document.exitFullscreen) document.exitFullscreen();
     }
   };
-  // ---------------------------------------------------------
 
-  // Funzione stella dizionario
   const isWordSaved = (text) => {
     if (!savedWords || !text) return false;
     return savedWords.some(w => w.original.toLowerCase() === text.toLowerCase());
   };
 
-  // Logica Sottotitoli (Mantenuta)
-  const currentSegment = video.segmenti?.find(
-    seg => currentTime >= seg.startTime && currentTime <= seg.endTime
-  );
+  // ============================================================
+  // 🔥 FIX SINCRONIZZAZIONE INTELLIGENTE 🔥
+  // ============================================================
+  const normalizeTime = (start, end) => {
+    // 1. Se sono stringhe con i due punti (00:00:05,500), le convertiamo in secondi
+    if (typeof start === 'string' && start.includes(':')) {
+        const parse = (t) => {
+            const [h, m, s] = t.split(':');
+            return (parseFloat(h) * 3600) + (parseFloat(m) * 60) + parseFloat(s.replace(',', '.'));
+        };
+        return { s: parse(start), e: parse(end) };
+    }
+
+    const s = parseFloat(start);
+    const e = parseFloat(end);
+    
+    // 2. LOGICA DELLA DURATA:
+    // Un sottotitolo dura di solito 2-5 secondi. Non dura mai 2000 secondi.
+    // Se la differenza (e - s) è maggiore di 100, significa che siamo in Millisecondi.
+    const diff = e - s;
+    if (diff > 50 || s > 10000) { 
+        // Se la differenza è > 50 (impossibile siano secondi) o lo start è enorme -> SONO MS
+        return { s: s / 1000, e: e / 1000 };
+    }
+    
+    // Altrimenti sono già Secondi
+    return { s, e };
+  };
+
+  const currentSegment = video.segmenti?.find(seg => {
+    const { s, e } = normalizeTime(seg.startTime, seg.endTime);
+    // Buffer di 0.1s per "agganciare" meglio il tempo
+    return currentTime >= (s - 0.1) && currentTime <= (e + 0.1);
+  });
+  // ============================================================
 
   const fetchTranslation = async (text, type) => {
-    setIsPlaying(false); // Pausa automatica quando clicchi una parola
+    setIsPlaying(false); 
     setTooltip({
       type: type,
       text: text,
@@ -250,33 +280,19 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
   return (
     <div className="card-container" style={{ width: '100%', maxWidth: '1000px', margin: '0 auto' }}>
       
-      {/* WRAPPER PRINCIPALE (Include Video + Sottotitoli + Tooltip) */}
       <div className="kineo-player-wrapper" ref={wrapperRef} style={{ position: 'relative', background: '#000' }}>
           
-          {/* TOOLTIP / FLASHCARD: 
-             Ora è DENTRO il wrapper, quindi si vede in Fullscreen.
-             Grazie a 'position: fixed' nel CSS, in modalità normale sembrerà "fuori" dal video (fluttuante sulla pagina).
-          */}
           {tooltip && (
             <div className="kineo-tooltip-container" style={{ borderLeft: `6px solid ${tooltip.type === 'DB' ? '#fbc02d' : '#007bff'}` }}>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
                 <span style={{ textTransform:'uppercase', fontSize:'0.7em', fontWeight:'bold', letterSpacing:'1px', color: tooltip.type === 'DB' ? '#f9a825' : '#007bff', backgroundColor: tooltip.type === 'DB' ? '#fff9c4' : '#e3f2fd', padding: '2px 8px', borderRadius: '10px' }}>{tooltip.meta}</span>
                 <button onClick={() => setTooltip(null)} style={{border:'none', background:'transparent', cursor:'pointer', fontSize:'1.5em', lineHeight: '0.8', color: '#999'}}>&times;</button>
               </div>
-              
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                  <h3 style={{margin:'0', color:'#333', fontSize: '1.3em'}}>"{tooltip.text}"</h3>
                  <button 
-                    onClick={() => onToggleSave({ 
-                        original: tooltip.text, 
-                        translation: tooltip.translation, 
-                        type: tooltip.meta 
-                    })}
-                    style={{ 
-                        background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.8em',
-                        color: isWordSaved(tooltip.text) ? '#fbc02d' : '#e0e0e0',
-                        transition: 'color 0.2s'
-                    }}
+                    onClick={() => onToggleSave({ original: tooltip.text, translation: tooltip.translation, type: tooltip.meta })}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.8em', color: isWordSaved(tooltip.text) ? '#fbc02d' : '#e0e0e0', transition: 'color 0.2s' }}
                     title={isWordSaved(tooltip.text) ? "Rimuovi dal dizionario" : "Salva nel dizionario"}
                  >
                     {isWordSaved(tooltip.text) ? '★' : '☆'}
@@ -287,23 +303,16 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
             </div>
           )}
 
-          {/* PULSANTE FULLSCREEN CUSTOM (Posizionato sopra il video in basso a dx) */}
           <button className="kineo-fullscreen-btn" onClick={toggleFullscreen} title="Schermo intero">
              ⛶
           </button>
 
-          {/* PLAYER AREA */}
           <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               {video.url ? (
                 isDirectFile(video.url) ? (
-                  /* --- FILE DIRETTO (.mp4) --- */
                   <video 
                     ref={playerRef} 
                     src={video.url} 
-                    /* IMPORTANTE: 'controls' attiva i controlli, 
-                       ma 'controlsList="nofullscreen"' nasconde il tasto nativo 
-                       che romperebbe la visualizzazione dei sottotitoli.
-                    */
                     controls 
                     controlsList="nodownload nofullscreen noremoteplayback" 
                     width="100%" 
@@ -313,7 +322,6 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
                     onPause={() => setIsPlaying(false)}
                   />
                 ) : (
-                  /* --- YOUTUBE / REACT PLAYER --- */
                   <div style={{ position: 'relative', paddingTop: '56.25%', width: '100%' }}>
                     <ReactPlayer 
                       ref={playerRef} 
@@ -323,6 +331,8 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
                       width="100%" 
                       height="100%" 
                       playing={isPlaying}
+                      /* Aggiorna ogni 50ms per fluidità massima */
+                      progressInterval={50} 
                       onPlay={() => setIsPlaying(true)}
                       onPause={() => setIsPlaying(false)}
                       onProgress={handleProgress}
@@ -331,12 +341,9 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
                     />
                   </div>
                 )
-              ) : (
-                <div style={{padding: '50px', color: 'white'}}>URL mancante</div>
-              )}
+              ) : (<div style={{padding: '50px', color: 'white'}}>URL mancante</div>)}
           </div>
 
-          {/* SOTTOTITOLI */}
           {currentSegment && (
             <div className="kineo-subtitle-overlay">
               <div className="kineo-active-subtitle">
@@ -346,7 +353,6 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
           )}
       </div>
 
-      {/* SEZIONE COMMENTI */}
       {showComments && (
         <div className="comments-section" style={{marginTop: '20px'}}>
           <h3>Discussione ({comments.length})</h3>
@@ -362,7 +368,6 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
               <button className="btn-primary" onClick={handlePostComment}>Invia</button>
           </div>
 
-          {/* MODIFICA FONDAMENTALE: Rimossi stili inline che bloccavano l'altezza */}
           <div className="comment-list">
                 {comments.map((comm) => {
                     const ownerIdRaw = comm.utenteId?._id ?? comm.utenteId ?? comm.utente;
