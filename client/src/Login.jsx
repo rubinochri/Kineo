@@ -12,14 +12,31 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(''); setSuccess('');
+    setError(''); 
+    setSuccess('');
+    
     try {
       const res = await axios.post('http://localhost:5001/api/login', formData);
+      
+      // 1. Salvataggio dati utente e token
+      const userData = res.data.user;
+      localStorage.setItem('userData', JSON.stringify(userData));
+      
       setSuccess('Accesso effettuato! Reindirizzamento...');
-      localStorage.setItem('userData', JSON.stringify(res.data.user));
-      // MODIFICA: Reindirizzamento a /testvideo invece di /dashboard
-      setTimeout(() => navigate('/videos'), 1500);
+
+      // 2. Logica di Reindirizzamento basata sul Ruolo
+      setTimeout(() => {
+        if (userData.ruolo === 'admin') {
+          console.log("Utente Admin rilevato: Vado alla dashboard");
+          navigate('/admin'); // <--- CORRETTO: Punta alla rotta /admin
+        } else {
+          console.log("Utente Standard rilevato: Vado ai video");
+          navigate('/videos'); // Rotta Utente
+        }
+      }, 1500);
+
     } catch (err) {
+      console.error("Errore Login:", err);
       setError(err.response?.data?.msg || 'Errore durante l\'accesso');
     }
   };
@@ -38,7 +55,6 @@ export default function Login() {
         
         {/* Intestazione */}
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          {/* APPLICATO NUOVO STILE */}
           <h2 className="title-gradient title-lg">
             Bentornato
           </h2>

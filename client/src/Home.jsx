@@ -22,30 +22,6 @@ function Home() {
         </Link>
       </div>
 
-      {/* --- BOTTONE ADMIN (Era già nel tuo codice originale) --- */}
-      <div className="animate-enter delay-3" style={{ marginTop: '40px' }}>
-        <Link to="/testvideo" 
-          style={{ 
-            textDecoration: 'none', 
-            color: '#6b7280', 
-            border: '1px solid #e5e7eb', 
-            padding: '10px 20px', 
-            borderRadius: '30px', 
-            fontSize: '0.9rem', 
-            fontWeight: '600',
-            transition: 'all 0.2s',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'rgba(255,255,255,0.5)'
-          }} 
-           onMouseEnter={(e) => { e.target.style.borderColor = '#333'; e.target.style.color = '#333'; e.target.style.background = 'white'; }}
-           onMouseLeave={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.color = '#6b7280'; e.target.style.background = 'rgba(255,255,255,0.5)'; }}
-        >
-          <span>🔧</span> Area Admin
-        </Link>
-      </div>
-
     </div>
   );
 }

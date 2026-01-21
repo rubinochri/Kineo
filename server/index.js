@@ -5,13 +5,13 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');   
 require('dotenv').config();           
 
-// 2. IMPORTAZIONE DEI MODELLI (DATABASE)
+// 2. IMPORTAZIONE DEI MODELLI
 const Video = require('./models/Video');
 const Utente = require('./models/Utente');
 const Dizionario = require('./models/Dizionario');
 const Commento = require('./models/Commento');
 
-// Inizializziamo l'applicazione Express
+// Inizializziamo Express
 const app = express();
 
 // 3. MIDDLEWARE
@@ -27,31 +27,76 @@ mongoose.connect(process.env.MONGODB_URI)
 // 5. API ROUTES
 // ---------------------------------------------------------
 
-// --- TRADUZIONE (DIZIONARIO LOCALE) --- 
-app.post('/api/translate', async (req, res) => {
+// --- VIDEO ROUTES (CRUD COMPLETO) ---
+
+// GET: Lista video
+app.get('/api/videos', async (req, res) => {
   try {
-    const { text } = req.body;
-    
-    if (!text) return res.status(400).json({ message: "Testo mancante" });
-
-    const cleanWord = text.trim().toLowerCase();
-    const entry = await Dizionario.findOne({ word: cleanWord });
-
-    if (entry) {
-      res.json({ translation: entry.translation });
-    } else {
-      res.json({ translation: "Traduzione non presente nel dizionario demo." });
-    }
-
+    const videos = await Video.find(); 
+    res.json(videos); 
   } catch (err) {
-    console.error("Errore dizionario:", err);
-    res.status(500).json({ message: "Errore durante la ricerca nel dizionario." });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// --- VIDEO ---
+// GET: Video singolo
+app.get('/api/videos/:id', async (req, res) => {
+  try {
+    const video = await Video.findById(req.params.id); 
+    if (!video) return res.status(404).json({ message: 'Video non trovato' }); 
+    res.json(video);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
-// PATCH /api/videos/:id/segmenti (Aggiorna solo i sottotitoli)
+// POST: Crea video (Admin) - AGGIORNATO CON SERIE/EPISODIO
+app.post('/api/videos', async (req, res) => {
+  try {
+    const { titolo, url, livelloDifficolta, copertina, descrizione, serie, episodio } = req.body;
+
+    if (!titolo || !url || !livelloDifficolta) {
+      return res.status(400).json({ message: "Titolo, URL e Livello Difficoltà sono obbligatori." });
+    }
+
+    const nuovoVideo = new Video({
+      titolo,
+      url,
+      livelloDifficolta,
+      copertina,
+      descrizione,
+      serie: serie || '',       // Supporto Serie
+      episodio: episodio || '', // Supporto Episodio
+      segmenti: [] 
+    });
+
+    const videoSalvato = await nuovoVideo.save();
+    res.status(201).json(videoSalvato);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// PATCH: Aggiorna dati video (Admin)
+app.patch('/api/videos/:id', async (req, res) => {
+  try {
+    const updates = req.body;
+    const options = { new: true, runValidators: true }; 
+
+    const videoAggiornato = await Video.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      options
+    );
+
+    if (!videoAggiornato) return res.status(404).json({ message: "Video non trovato" });
+    res.json(videoAggiornato);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// PATCH: Aggiorna segmenti video (Sottotitoli)
 app.patch('/api/videos/:id/segmenti', async (req, res) => {
   try {
     const { segmenti } = req.body; 
@@ -67,84 +112,63 @@ app.patch('/api/videos/:id/segmenti', async (req, res) => {
     );
 
     if (!videoAggiornato) return res.status(404).json({ message: 'Video non trovato' });
-
     res.json(videoAggiornato);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
-// PATCH /api/videos/:id (Aggiorna dati generici: copertina, titolo, ecc.)
-app.patch('/api/videos/:id', async (req, res) => {
+// DELETE: Elimina video (Admin)
+app.delete('/api/videos/:id', async (req, res) => {
   try {
-    const updates = req.body;
-    const options = { new: true, runValidators: true }; 
-
-    const videoAggiornato = await Video.findByIdAndUpdate(
-      req.params.id,
-      updates,
-      options
-    );
-
-    if (!videoAggiornato) {
-      return res.status(404).json({ message: "Video non trovato" });
-    }
-
-    res.json(videoAggiornato);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
-
-// GET /api/videos
-app.get('/api/videos', async (req, res) => {
-  try {
-    const videos = await Video.find(); 
-    res.json(videos); 
+    const videoCancellato = await Video.findByIdAndDelete(req.params.id);
+    if (!videoCancellato) return res.status(404).json({ message: "Video non trovato" });
+    res.json({ message: "Video eliminato con successo" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// GET /api/videos/:id
-app.get('/api/videos/:id', async (req, res) => {
+// --- ADMIN DASHBOARD ROUTES (NUOVE) ---
+
+// GET: Lista di TUTTI gli utenti
+app.get('/api/users', async (req, res) => {
   try {
-    const video = await Video.findById(req.params.id); 
-    if (!video) return res.status(404).json({ message: 'Video non trovato' }); 
-    res.json(video);
+    const users = await Utente.find().select('-password').sort({ dataRegistrazione: -1 });
+    res.json(users);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ msg: "Errore server" });
   }
 });
 
-// POST /api/videos
-app.post('/api/videos', async (req, res) => {
+// GET: Lista di TUTTI i commenti (per moderazione)
+app.get('/api/comments/all', async (req, res) => {
   try {
-    const { titolo, url, livelloDifficolta, copertina, descrizione } = req.body;
-
-    if (!titolo || !url || !livelloDifficolta) {
-      return res.status(400).json({ message: "Titolo, URL e Livello Difficoltà sono obbligatori." });
-    }
-
-    const nuovoVideo = new Video({
-      titolo,
-      url,
-      livelloDifficolta,
-      copertina,
-      descrizione,
-      segmenti: [] 
-    });
-
-    const videoSalvato = await nuovoVideo.save();
-    res.status(201).json(videoSalvato);
+    const commenti = await Commento.find()
+      .populate('utenteId', 'username email')
+      .populate('videoId', 'titolo')
+      .sort({ dataCreazione: -1 });
+    res.json(commenti);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(500).json({ msg: "Errore server" });
   }
 });
 
-// --- UTENTI (AUTH) ---
+// DELETE: Elimina commento (Admin Override)
+app.delete('/api/admin/comments/:id', async (req, res) => {
+  try {
+    await Commento.findByIdAndDelete(req.params.id);
+    // Elimina anche eventuali risposte
+    await Commento.deleteMany({ parentCommentoId: req.params.id });
+    res.json({ msg: "Commento eliminato dall'admin." });
+  } catch (err) {
+    res.status(500).json({ msg: "Errore eliminazione." });
+  }
+});
 
-// POST /api/register
+// --- AUTH ROUTES ---
+
+// Register
 app.post('/api/register', async (req, res) => {
   try {
     const { nome, cognome, username, email, password } = req.body;
@@ -154,53 +178,36 @@ app.post('/api/register', async (req, res) => {
     }
 
     const utenteEsistente = await Utente.findOne({ email });
-    if (utenteEsistente) {
-      return res.status(400).json({ msg: "Email già registrata." });
-    }
+    if (utenteEsistente) return res.status(400).json({ msg: "Email già registrata." });
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt); 
 
     const nuovoUtente = new Utente({
-      nome,
-      cognome,
-      username,
-      email,
-      password: passwordHash 
+      nome, cognome, username, email, password: passwordHash 
     });
 
     await nuovoUtente.save();
     res.status(201).json({ msg: "Registrazione completata con successo!" });
-
   } catch (err) {
     console.error("Errore server:", err);
     res.status(500).json({ msg: "Errore interno del server." });
   }
 });
 
-// POST /api/login
+// Login
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Validazione input
-    if (!email || !password) {
-      return res.status(400).json({ msg: "Inserisci email e password." });
-    }
+    if (!email || !password) return res.status(400).json({ msg: "Inserisci email e password." });
 
-    // 2. Verifica esistenza utente
     const user = await Utente.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ msg: "Credenziali non valide." });
-    }
+    if (!user) return res.status(400).json({ msg: "Credenziali non valide." });
 
-    // 3. Verifica password
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ msg: "Credenziali non valide." });
-    }
+    if (!isMatch) return res.status(400).json({ msg: "Credenziali non valide." });
 
-    // 4. Login riuscito (Restituisce dati utente)
     res.json({
       msg: "Login effettuato con successo!",
       user: {
@@ -211,21 +218,18 @@ app.post('/api/login', async (req, res) => {
         ruolo: user.ruolo
       }
     });
-
   } catch (err) {
     console.error("Errore Login:", err);
     res.status(500).json({ msg: "Errore server." });
   }
 });
 
-// GET /api/user/:id (Ottiene i dati completi dell'utente)
+// --- UTENTI (CRUD & DIZIONARIO) ---
+
 app.get('/api/user/:id', async (req, res) => {
   try {
     const user = await Utente.findById(req.params.id);
-    
-    if (!user) {
-      return res.status(404).json({ msg: "Utente non trovato." });
-    }
+    if (!user) return res.status(404).json({ msg: "Utente non trovato." });
 
     res.json({
       id: user._id,
@@ -236,60 +240,30 @@ app.get('/api/user/:id', async (req, res) => {
       ruolo: user.ruolo,
       dataRegistrazione: user.dataRegistrazione
     });
-
   } catch (err) {
-    console.error("Errore GET user:", err);
     res.status(500).json({ msg: "Errore server." });
   }
 });
 
-// GET /api/user/:id/commenti (Ottiene tutti i commenti di un utente)
-app.get('/api/user/:id/commenti', async (req, res) => {
-  try {
-    const commenti = await Commento.find({ utenteId: req.params.id })
-      .populate('videoId', 'titolo')
-      .sort({ dataCreazione: -1 });
-    
-    res.json(commenti);
-  } catch (err) {
-    console.error("Errore GET commenti utente:", err);
-    res.status(500).json({ msg: "Errore durante il caricamento dei commenti." });
-  }
-});
-
-// PUT /api/user/:id (Aggiorna i dati dell'utente)
+// PUT User
 app.put('/api/user/:id', async (req, res) => {
   try {
     const { nome, cognome, username, email } = req.body;
+    if (!nome || !cognome || !username || !email) return res.status(400).json({ msg: "Campi obbligatori." });
 
-    // Validazione input
-    if (!nome || !cognome || !username || !email) {
-      return res.status(400).json({ msg: "Tutti i campi sono obbligatori." });
-    }
+    const emailEsistente = await Utente.findOne({ email: email, _id: { $ne: req.params.id } });
+    if (emailEsistente) return res.status(400).json({ msg: "Email già in uso." });
 
-    // Verifica che email non sia già usata da un altro utente
-    const emailEsistente = await Utente.findOne({ 
-      email: email,
-      _id: { $ne: req.params.id } // Esclude l'utente corrente
-    });
-
-    if (emailEsistente) {
-      return res.status(400).json({ msg: "Email già registrata da un altro utente." });
-    }
-
-    // Aggiorna l'utente
     const userAggiornato = await Utente.findByIdAndUpdate(
       req.params.id,
       { nome, cognome, username, email },
       { new: true, runValidators: true }
     );
 
-    if (!userAggiornato) {
-      return res.status(404).json({ msg: "Utente non trovato." });
-    }
+    if (!userAggiornato) return res.status(404).json({ msg: "Utente non trovato." });
 
     res.json({
-      msg: "Dati aggiornati con successo!",
+      msg: "Dati aggiornati!",
       user: {
         id: userAggiornato._id,
         nome: userAggiornato.nome,
@@ -299,149 +273,111 @@ app.put('/api/user/:id', async (req, res) => {
         ruolo: userAggiornato.ruolo
       }
     });
-
   } catch (err) {
-    console.error("Errore PUT user:", err);
     res.status(500).json({ msg: "Errore server." });
   }
 });
 
-// DELETE /api/user/:id (Elimina l'utente e tutti i suoi dati)
+// DELETE User
 app.delete('/api/user/:id', async (req, res) => {
   try {
     const userId = req.params.id;
-
-    // Verifica che l'utente esista
     const user = await Utente.findById(userId);
-    if (!user) {
-      return res.status(404).json({ msg: "Utente non trovato." });
-    }
+    if (!user) return res.status(404).json({ msg: "Utente non trovato." });
 
-    // Elimina tutti i commenti dell'utente
     await Commento.deleteMany({ utenteId: userId });
-
-    // Elimina l'utente
     await Utente.findByIdAndDelete(userId);
-
-    res.json({ 
-      msg: "Profilo eliminato con successo. Tutti i dati associati sono stati rimossi." 
-    });
-
+    res.json({ msg: "Profilo eliminato." });
   } catch (err) {
-    console.error("Errore DELETE user:", err);
-    res.status(500).json({ msg: "Errore durante l'eliminazione del profilo." });
+    res.status(500).json({ msg: "Errore server." });
   }
 });
 
-// --- DIZIONARIO PERSONALE (Salvataggio su DB) ---
-
-// 1. GET Dizionario: Ottieni tutte le parole salvate dall'utente
+// Dizionario GET
 app.get('/api/user/:id/dizionario', async (req, res) => {
   try {
     const user = await Utente.findById(req.params.id);
     if (!user) return res.status(404).json({ msg: "Utente non trovato" });
-    
-    // Ordina per data (le più recenti in alto)
     const parole = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
     res.json(parole);
   } catch (err) {
-    console.error("Errore GET dizionario:", err);
     res.status(500).json({ msg: "Errore server" });
   }
 });
 
-// 2. POST Dizionario: Aggiungi una parola
+// Dizionario POST
 app.post('/api/user/:id/dizionario', async (req, res) => {
   try {
     const { original, translation, type, notes, learned } = req.body;
-    
-    // Trova l'utente
     const user = await Utente.findById(req.params.id);
     if (!user) return res.status(404).json({ msg: "Utente non trovato" });
 
-    // Controlla se la parola esiste già (case insensitive)
-    const esisteGia = user.dizionario.find(
-      w => w.original.toLowerCase() === original.toLowerCase()
-    );
+    const esisteGia = user.dizionario.find(w => w.original.toLowerCase() === original.toLowerCase());
+    if (esisteGia) return res.status(400).json({ msg: "Parola già presente" });
 
-    if (esisteGia) {
-      return res.status(400).json({ msg: "Parola già presente nel dizionario" });
-    }
-
-    // Aggiungi la parola (con i nuovi campi notes e learned opzionali)
-    user.dizionario.push({ 
-        original, 
-        translation, 
-        type,
-        notes: notes || '',
-        learned: learned || false 
-    });
-    
+    user.dizionario.push({ original, translation, type, notes: notes || '', learned: learned || false });
     await user.save();
 
-    // Restituisci il dizionario aggiornato
     const paroleAggiornate = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
     res.json(paroleAggiornate);
-
   } catch (err) {
-    console.error("Errore POST dizionario:", err);
     res.status(500).json({ msg: "Errore server" });
   }
 });
 
-// 3. DELETE Dizionario: Rimuovi una parola
+// Dizionario DELETE
 app.delete('/api/user/:id/dizionario/:wordId', async (req, res) => {
   try {
     const user = await Utente.findById(req.params.id);
     if (!user) return res.status(404).json({ msg: "Utente non trovato" });
-
-    // Rimuovi la parola dall'array usando il suo ID
     user.dizionario.pull({ _id: req.params.wordId });
     await user.save();
-
     const paroleAggiornate = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
     res.json(paroleAggiornate);
-
   } catch (err) {
-    console.error("Errore DELETE dizionario:", err);
     res.status(500).json({ msg: "Errore server" });
   }
 });
 
-// 4. PUT Dizionario: AGGIORNA una parola (Note o Stato Imparato) [NUOVA ROTTA]
+// Dizionario PUT (Update)
 app.put('/api/user/:id/dizionario/:wordId', async (req, res) => {
     try {
       const { notes, learned } = req.body;
       const { wordId } = req.params;
-  
       const user = await Utente.findById(req.params.id);
       if (!user) return res.status(404).json({ msg: "Utente non trovato" });
   
-      // Trova la sotto-documento parola specifica
       const parola = user.dizionario.id(wordId);
-      
-      if (!parola) {
-        return res.status(404).json({ msg: "Parola non trovata nel dizionario" });
-      }
+      if (!parola) return res.status(404).json({ msg: "Parola non trovata" });
   
-      // Aggiorna i campi solo se sono stati inviati
       if (notes !== undefined) parola.notes = notes;
       if (learned !== undefined) parola.learned = learned;
   
       await user.save();
-  
       const paroleAggiornate = user.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
       res.json(paroleAggiornate);
-  
     } catch (err) {
-      console.error("Errore PUT dizionario:", err);
       res.status(500).json({ msg: "Errore server" });
     }
-  });
+});
 
-// --- COMMENTI ---
+// --- ALTRE ROTTE ---
 
-// GET /api/commenti/video/:videoId (Ottiene tutti i commenti di un video con risposte)
+// Traduzione
+app.post('/api/translate', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ message: "Testo mancante" });
+    const cleanWord = text.trim().toLowerCase();
+    const entry = await Dizionario.findOne({ word: cleanWord });
+    if (entry) res.json({ translation: entry.translation });
+    else res.json({ translation: "Traduzione non presente nel dizionario demo." });
+  } catch (err) {
+    res.status(500).json({ message: "Errore dizionario." });
+  }
+});
+
+// Commenti (Get, Post, Put, Delete, Like)
 app.get('/api/commenti/video/:videoId', async (req, res) => {
   try {
     const commenti = await Commento.find({ videoId: req.params.videoId, parentCommentoId: null })
@@ -449,144 +385,87 @@ app.get('/api/commenti/video/:videoId', async (req, res) => {
       .populate('like', '_id')
       .sort({ dataCreazione: -1 });
     
-    // Carica le risposte per ogni commento
     const commentiConRisposte = await Promise.all(
       commenti.map(async (commento) => {
         const risposte = await Commento.find({ parentCommentoId: commento._id })
           .populate('utenteId', 'nome username')
           .populate('like', '_id')
           .sort({ dataCreazione: 1 });
-        
-        return {
-          ...commento.toObject(),
-          risposte: risposte
-        };
+        return { ...commento.toObject(), risposte: risposte };
       })
     );
-    
     res.json(commentiConRisposte);
   } catch (err) {
-    console.error("Errore GET commenti:", err);
-    res.status(500).json({ message: "Errore durante il caricamento dei commenti." });
+    res.status(500).json({ message: "Errore caricamento commenti." });
   }
 });
 
-// POST /api/commenti (Crea un nuovo commento o risposta)
 app.post('/api/commenti', async (req, res) => {
   try {
     const { utenteId, videoId, testo, parentCommentoId } = req.body;
-
-    if (!utenteId || !videoId || !testo) {
-      return res.status(400).json({ message: "utenteId, videoId e testo sono obbligatori." });
-    }
+    if (!utenteId || !videoId || !testo) return res.status(400).json({ message: "Dati mancanti." });
 
     const nuovoCommento = new Commento({
-      utenteId,
-      videoId,
-      testo: testo.trim(),
-      parentCommentoId: parentCommentoId || null,
-      like: []
+      utenteId, videoId, testo: testo.trim(), parentCommentoId: parentCommentoId || null, like: []
     });
-
     await nuovoCommento.save();
-    
-    // Ricarica il commento con i dati utente popolati
-    const commentoCompleto = await Commento.findById(nuovoCommento._id)
-      .populate('utenteId', 'nome username');
-    
+    const commentoCompleto = await Commento.findById(nuovoCommento._id).populate('utenteId', 'nome username');
     res.status(201).json(commentoCompleto);
   } catch (err) {
-    console.error("Errore POST commenti:", err);
     res.status(400).json({ message: err.message });
   }
 });
 
-// PUT /api/commenti/:id (Modifica un commento) - solo proprietario
 app.put('/api/commenti/:id', async (req, res) => {
   try {
     const { utenteId, testo } = req.body;
-
-    if (!utenteId || testo === undefined) {
-      return res.status(400).json({ message: "utenteId e testo sono obbligatori." });
-    }
+    if (!utenteId || testo === undefined) return res.status(400).json({ message: "Dati mancanti." });
 
     const commento = await Commento.findById(req.params.id);
     if (!commento) return res.status(404).json({ message: "Commento non trovato." });
-
-    if (commento.utenteId.toString() !== utenteId) {
-      return res.status(403).json({ message: "Non autorizzato a modificare questo commento." });
-    }
+    if (commento.utenteId.toString() !== utenteId) return res.status(403).json({ message: "Non autorizzato." });
 
     commento.testo = testo.trim();
     const commentoAggiornato = await commento.save();
     await commentoAggiornato.populate('utenteId', 'nome username');
-
     res.json(commentoAggiornato);
   } catch (err) {
-    console.error("Errore PUT commento:", err);
     res.status(400).json({ message: err.message });
   }
 });
 
-// PUT /api/commenti/:id/like (Aggiunge/Rimuove un like)
 app.put('/api/commenti/:id/like', async (req, res) => {
   try {
     const { utenteId } = req.body;
-
-    if (!utenteId) {
-      return res.status(400).json({ message: "utenteId è obbligatorio." });
-    }
-
+    if (!utenteId) return res.status(400).json({ message: "Utente mancante." });
     const commento = await Commento.findById(req.params.id);
-    if (!commento) {
-      return res.status(404).json({ message: "Commento non trovato." });
-    }
+    if (!commento) return res.status(404).json({ message: "Commento non trovato." });
 
-    // Controlla se l'utente ha già messo like
     const likeIndex = commento.like.indexOf(utenteId);
-    
-    if (likeIndex === -1) {
-      // Aggiungi like
-      commento.like.push(utenteId);
-    } else {
-      // Rimuovi like
-      commento.like.splice(likeIndex, 1);
-    }
+    if (likeIndex === -1) commento.like.push(utenteId);
+    else commento.like.splice(likeIndex, 1);
 
     const commentoAggiornato = await commento.save();
     await commentoAggiornato.populate('utenteId', 'nome username');
     await commentoAggiornato.populate('like', '_id');
-
     res.json(commentoAggiornato);
   } catch (err) {
-    console.error("Errore PUT like commento:", err);
     res.status(400).json({ message: err.message });
   }
 });
 
-// DELETE /api/commenti/:id (Elimina un commento) - solo proprietario
 app.delete('/api/commenti/:id', async (req, res) => {
   try {
     const { utenteId } = req.body;
-
-    if (!utenteId) {
-      return res.status(400).json({ message: "utenteId è obbligatorio." });
-    }
-
+    if (!utenteId) return res.status(400).json({ message: "Utente mancante." });
     const commento = await Commento.findById(req.params.id);
     if (!commento) return res.status(404).json({ message: "Commento non trovato." });
+    if (commento.utenteId.toString() !== utenteId) return res.status(403).json({ message: "Non autorizzato." });
 
-    if (commento.utenteId.toString() !== utenteId) {
-      return res.status(403).json({ message: "Non autorizzato a eliminare questo commento." });
-    }
-
-    // Rimuovi anche le risposte collegate
     await Commento.deleteMany({ parentCommentoId: commento._id });
     await commento.deleteOne();
-
     res.json({ message: "Commento eliminato." });
   } catch (err) {
-    console.error("Errore DELETE commento:", err);
     res.status(400).json({ message: err.message });
   }
 });
