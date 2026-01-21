@@ -5,15 +5,15 @@
   text-align: center;
 }
 
-/* --- KINEO PLAYER STYLES --- */
+/* --- KINEO PLAYER WRAPPER --- */
 .kineo-player-wrapper {
   position: relative;
   width: 100%;
   background-color: #000;
-  overflow: hidden; /* Nasconde scrollbar in fullscreen */
+  overflow: hidden; 
 }
 
-/* Parole interattive nell'overlay */
+/* --- PAROLE INTERATTIVE --- */
 .kineo-word {
   cursor: pointer;
   padding: 0 4px;
@@ -25,7 +25,6 @@
   color: #fbbf24;
 }
 
-/* Token DB (Idioms, etc) nell'overlay */
 .kineo-db-token {
   background-color: rgba(251, 192, 45, 0.8);
   color: #000;
@@ -40,28 +39,146 @@
   background-color: #fbc02d;
 }
 
-/* Pulsante Fullscreen Custom */
+/* --- PULSANTE FULLSCREEN CUSTOM --- */
 .kineo-fullscreen-btn {
   position: absolute;
-  top: 16px; /* sposta il bottone in alto */
-  right: 16px;
-  z-index: 20;
-  background: rgba(0,0,0,0.5);
-  border: 1px solid rgba(255,255,255,0.3);
+  z-index: 2147483647;
+
+  /* 1. POSIZIONE NORMALE */
+  bottom: 35px;
+  right: 28px;
+
+  /* Stile */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.6);
   color: white;
-  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 4px;
+  padding: 4px 8px;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 15px;
+  font-weight: bold;
+  transition: background 0.2s;
+  line-height: 1; 
 }
+
 .kineo-fullscreen-btn:hover {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 2. POSIZIONE FULLSCREEN */
+:fullscreen .kineo-fullscreen-btn {
+  bottom: 43px !important; 
+  right: 60px !important;
+}
+
+:-webkit-full-screen .kineo-fullscreen-btn {
+  bottom: 43px !important;
+  right: 60px !important;
+}
+
+:-moz-full-screen .kineo-fullscreen-btn {
+  bottom: 43px !important;
+  right: 60px !important;
+}
+
+/* --- SOTTOTITOLI INTERATTIVI --- */
+.kineo-subtitle-overlay {
+  position: absolute;
+  bottom: 80px; 
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%; 
+  text-align: center;
+  pointer-events: none; 
+  z-index: 20; 
+  display: flex;
+  justify-content: center;
+}
+
+.kineo-active-subtitle {
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: clamp(1rem, 2.5vw, 1.8rem); 
+  line-height: 1.4;
+  pointer-events: auto; 
+  box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* --- FLASHCARD / TOOLTIP --- */
+.kineo-tooltip-container {
+  position: fixed; 
+  bottom: 100px; 
+  right: 20px;
+  width: 300px;
+  background-color: white;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  border-radius: 10px;
+  padding: 20px;
+  z-index: 2147483647; 
+  animation: slideIn 0.3s ease-out;
+  text-align: left;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- OVERRIDE BROWSER VIDEO STYLES --- */
+video::-webkit-media-text-track-display { display: none !important; }
+video::-webkit-media-controls-fullscreen-button { display: none !important; }
+
+
+/* --- LAYOUT COLONNE (Video + Commenti) --- */
+.video-with-comments {
+  display: flex;
+  gap: 20px;
+  
+  /* IMPORTANTE: flex-start allinea tutto in alto. 
+     Se lasciassi 'center', una lista commenti molto lunga verrebbe 
+     spinta fuori dallo schermo verso l'alto. */
+  align-items: flex-start; 
+}
+
+.video-column {
+  flex: 1 1 auto; 
+  min-width: 0; 
+  position: relative; 
+  padding: 0 10px; 
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.video-column > div {
+  position: relative; 
+}
+
+.comments-column {
+  flex: 0 0 360px; 
+  max-width: 360px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .video-with-comments {
+    flex-direction: column;
+    align-items: stretch; /* Su mobile li vogliamo larghi tutto lo schermo */
+  }
+  .comments-column {
+    max-width: 100%;
+    width: 100%;
+  }
 }
 
 /* --- COMMENTI SECTION --- */
 .comments-section {
   text-align: left;
-  margin-top: 2rem;
   padding: 1rem;
   background: #f9f9f9;
   border-radius: 8px;
@@ -93,10 +210,18 @@
 }
 .btn-primary:hover { background-color: #1d4ed8; }
 
+/* --- LISTA COMMENTI espandibile (Stile YouTube) --- */
 .comment-list {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  
+  /* QUESTO È IL TRUCCO PER ESPANDERE ALL'INFINITO: */
+  height: auto;        /* Si adatta al contenuto */
+  max-height: none;    /* Nessun limite di altezza */
+  overflow-y: visible; /* Rimuove la scrollbar interna: usa quella della pagina */
+  
+  padding-right: 0; 
 }
 
 .single-comment {
@@ -118,95 +243,3 @@
   color: #333;
   line-height: 1.5;
 }
-
-
-/* ... (codice precedente invariato) */
-
-/* ... (codice input invariato) ... */
-
-.comment-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  /* MODIFICA: Abilita lo scroll verticale */
-  max-height: 400px;      /* Altezza massima prima dello scroll */
-  overflow-y: auto;       /* Scrollbar automatica se necessario */
-  padding-right: 10px;    /* Spazio per evitare sovrapposizione scrollbar */
-}
-
-/* Styling della scrollbar per Chrome/Safari/Edge (opzionale ma consigliato per UI pulita) */
-.comment-list::-webkit-scrollbar {
-  width: 8px;
-}
-.comment-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-.comment-list::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 4px;
-}
-.comment-list::-webkit-scrollbar-thumb:hover {
-  background: #bbb;
-}
-
-/* Layout video + commenti affiancati */
-
-.video-with-comments {
-  display: flex;
-  gap: 20px;
-  align-items: center; /* centra verticalmente le colonne (video e commenti) */
-}
-.video-column {
-  flex: 1 1 auto; /* occuperà lo spazio rimanente a sinistra */
-  min-width: 0; /* permette ai figli di restringersi correttamente */
-  position: relative; /* necessario per posizionare l'overlay sottotitoli relativo al video */
-  padding-left: 24px; /* spazio laterale per non essere attaccato ai bordi */
-  padding-right: 24px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center; /* centra verticalmente il player all'interno della colonna */
-}
-.comments-column {
-  flex: 0 0 360px; /* larghezza fissa per colonna commenti */
-  max-width: 360px;
-}
-
-/* Responsive: su schermi piccoli riportiamo commenti sotto il video */
-@media (max-width: 900px) {
-  .video-with-comments {
-    flex-direction: column;
-  }
-  .comments-column {
-    max-width: 100%;
-  }
-}
-
-/* Sottotitoli statici sopra il video */
-.kineo-subtitle-overlay {
-  position: absolute;
-  left: 0;
-  background-color: rgba(0,0,0,0.0); /* overlay container trasparente */
-  bottom: 80px; /* sposta i sottotitoli più in alto per evitare la barra dei controlli */
-  padding: 0; /* padding ridotto, lo gestisce l'elemento interno */
-  border-radius: 0;
-  pointer-events: auto;
-  font-size: clamp(0.7rem, 1vw, 0.9rem); /* dimensione generale più piccola */
-  z-index: 99999; /* assicura che siano sopra il player in fullscreen */
-}
-.kineo-subtitle-overlay .kineo-active-subtitle {
-  background-color: rgba(0,0,0,0.6); /* sfondo leggero per leggibilità */
-  text-shadow: none;
-  color: #fff; /* testo bianco per i sottotitoli */
-  padding: 6px 10px; /* padding ridotto per rendere il blocco più compatto */
-  border-radius: 4px;
-  display: inline-block;
-  font-size: clamp(0.8rem, 1.1vw, 1rem); /* sottotitolo più piccolo */
-  line-height: 1.3;
-  max-width: 90%;
-  text-align: center;
-  border: none; /* rimuove ogni contorno */
-  box-shadow: none; /* senza ombra */
-}
-
-/* ... (resto del codice invariato) */
