@@ -3,10 +3,10 @@ import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function Login() {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); //funzione per spostare l'utente tra le rotte
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState(''); //gestisce l'errore
+  const [success, setSuccess] = useState(''); //gestisce il successo
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
