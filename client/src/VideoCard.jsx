@@ -58,7 +58,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
   };
 
   // ============================================================
-  // 🔥 FIX SINCRONIZZAZIONE INTELLIGENTE 🔥
+  // FIX SINCRONIZZAZIONE INTELLIGENTE 
   // ============================================================
   const normalizeTime = (start, end) => {
     // 1. Se sono stringhe con i due punti (00:00:05,500), le convertiamo in secondi
@@ -114,28 +114,51 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
   const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   const renderInteractiveSubtitle = (text, approfondimenti) => {
+    // Controllo di sicurezza: se il testo è vuoto o indefinito, non renderizzare nulla.
     if (!text) return null;
+
+    // Prepara la lista dei "token" (parole speciali) dal database. Se non ce ne sono, usa un array vuoto.
     const dbTokens = approfondimenti || [];
+
+    // ORDINE DI PRIORITÀ: Ordina i token dal più lungo al più corto.
     const sortedApps = [...dbTokens].sort((a, b) => b.token.length - a.token.length);
+
+    // Inizializza l'array delle parti. All'inizio contiene solo l'intera frase come stringa.
     let parts = [text]; 
 
+    // Inizia a scansionare ogni parola speciale (approfondimento) presente nel database.
     sortedApps.forEach(app => {
+        // Crea una Regex (Espressione Regolare). 
+        // escapeRegExp: pulisce i caratteri speciali.
+        // 'gi': cerca in tutto il testo (Global) e ignora maiuscole/minuscole (Insensitive).
         const pattern = new RegExp(`(${escapeRegExp(app.token)})`, 'gi');
+        
         const newParts = [];
+
+        // Cicla su ogni "pezzo" di frase che abbiamo creato finora.
         parts.forEach(part => {
+            // Se la parte è una stringa, prova a "spezzarla" ulteriormente cercando il token.
             if (typeof part === 'string') {
                 const split = part.split(pattern);
+
+                // 9. Esamina i frammenti ottenuti dallo split.
                 split.forEach(s => {
+                    // 10. Se il frammento corrisponde alla parola speciale del DB...
                     if (s.toLowerCase() === app.token.toLowerCase()) {
+                        // ...lo trasforma in un OGGETTO speciale che contiene tutti i dati del database.
                         newParts.push({ type: 'DB_TOKEN', content: s, data: app });
                     } else if (s !== "") {
+                        // 11. Se è testo normale, lo aggiunge come semplice stringa.
                         newParts.push(s);
                     }
                 });
             } else {
+                // Se la parte è già un oggetto (un token trovato in un ciclo precedente), 
+                // lo lascia così com'è senza toccarlo.
                 newParts.push(part);
             }
         });
+        // Aggiorna l'elenco delle parti con quelle appena "sezionate".
         parts = newParts;
     });
 
@@ -275,7 +298,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
   useEffect(() => {
     if (video?._id) fetchComments();
   }, [video]);
-
+  //Fine logica
 
   return (
     <div className="card-container" style={{ width: '100%', maxWidth: '1000px', margin: '0 auto' }}>

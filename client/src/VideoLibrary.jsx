@@ -1,19 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'; //Use state serve per visualizzare a schermo il cambio di uno stato (Es. premo su like e da 0 passa a 1)
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import VideoCard from './VideoCard'; 
 
 export default function VideoLibrary({ savedWords, onToggleSave }) {
   const navigate = useNavigate();
-  const [videos, setVideos] = useState([]);
-  const [user, setUser] = useState(null);
+  const [videos, setVideos] = useState([]); 
+  const [user, setUser] = useState(null); //Inizialmente null perchè non sappiamo chi è l'utente all'inizio
   
-  // Stato Commenti
-  const [commentiPerVideo, setCommentiPerVideo] = useState({});
-  const [nuovoCommentoPerVideo, setNuovoCommentoPerVideo] = useState({});
-  const [caricandoCommenti, setCaricandoCommenti] = useState({});
-  const [nuovaRispostaPerCommento, setNuovaRispostaPerCommento] = useState({});
-  const [likedCommenti, setLikedCommenti] = useState({});
   
   // UI & Filtri
   const [ricerca, setRicerca] = useState('');
@@ -24,43 +18,30 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [relatedEpisodes, setRelatedEpisodes] = useState([]); 
 
-  // 1. Init
+  //Trova l'utente
   useEffect(() => {
     const storedUser = localStorage.getItem('userData');
-    if (!storedUser) {
+    if (!storedUser) { //Se non trova lo UserID lo rimanda al login forzatamente
       navigate('/login');
     } else {
-      setUser(JSON.parse(storedUser));
+      setUser(JSON.parse(storedUser)); //Prende l'id dal local storage
       fetchVideos();
     }
   }, [navigate]);
 
-  // 2. Fetch Data
+  // Recupera i video
   const fetchVideos = async () => {
     try {
       const res = await axios.get('http://localhost:5001/api/videos');
       const sorted = res.data.sort((a, b) => new Date(b.dataCaricamento) - new Date(a.dataCaricamento));
       setVideos(sorted);
-      sorted.forEach(video => fetchCommenti(video._id));
     } catch (err) {
       console.error("Errore caricamento video:", err);
     }
-  };
+};
 
-  const fetchCommenti = async (videoId) => {
-    try {
-      setCaricandoCommenti(prev => ({ ...prev, [videoId]: true }));
-      const res = await axios.get(`http://localhost:5001/api/commenti/video/${videoId}`);
-      setCommentiPerVideo(prev => ({ ...prev, [videoId]: res.data }));
-    } catch (err) {
-      console.error("Errore caricamento commenti:", err);
-    } finally {
-      setCaricandoCommenti(prev => ({ ...prev, [videoId]: false }));
-    }
-  };
-
-  // --- 3. FIX DOPPIA SCROLLBAR ---
-  // Questo useEffect blocca la scrollbar della pagina principale (body) 
+  // --- Problema dello scroll ad apertura video ---
+  // useEffect blocca la scrollbar della pagina principale (body) 
   // quando c'è un video selezionato (la modale è aperta).
   useEffect(() => {
     if (selectedVideo) {
@@ -82,24 +63,24 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
       (video.titolo.toLowerCase().includes(ricerca.toLowerCase()) ||
        (video.serie && video.serie.toLowerCase().includes(ricerca.toLowerCase())) ||
        (video.descrizione && video.descrizione.toLowerCase().includes(ricerca.toLowerCase()))) &&
-      (livelloDifficolta === '' || video.livelloDifficolta === livelloDifficolta)
+      (livelloDifficolta === '' || video.livelloDifficolta === livelloDifficolta) 
     );
 
-    if (viewMode === 'MOVIES') {
+    if (viewMode === 'MOVIES') { //Se sono nella sezione "Film"
       return filteredBase
         .filter(v => !v.serie)
         .map(v => ({ type: 'VIDEO', ...v, mainVideo: v }));
-    } else {
+    } else { 
       const groups = {};
       filteredBase.filter(v => v.serie).forEach(video => {
         if (!groups[video.serie]) groups[video.serie] = [];
         groups[video.serie].push(video);
       });
 
-      return Object.keys(groups).map(serieName => {
-        const episodes = groups[serieName].sort((a, b) => a.episodio - b.episodio);
+      return Object.keys(groups).map(serieName => { //Se sono nella sezione "Serie TV"
+        const episodes = groups[serieName].sort((a, b) => a.episodio - b.episodio); //Crea una sola card che contiene tutti gli ep della serie
         return {
-          type: 'SERIES',
+          type: 'SERIES', 
           _id: `serie-${serieName}`,
           serie: serieName,
           mainVideo: episodes[0],
@@ -120,32 +101,10 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
     }
   };
 
-  // --- COMMENTI ACTIONS ---
-  const handleInviaCommento = async (videoId, e) => {
-    e.preventDefault();
-    const testoCommento = nuovoCommentoPerVideo[videoId]?.trim();
-    if (!testoCommento) return alert("Scrivi un commento!");
-    if (!user) return alert("Login necessario");
-
-    try {
-      const res = await axios.post('http://localhost:5001/api/commenti', {
-        utenteId: user.id, videoId, testo: testoCommento
-      });
-      setCommentiPerVideo(prev => ({ ...prev, [videoId]: [res.data, ...(prev[videoId] || [])] }));
-      setNuovoCommentoPerVideo(prev => ({ ...prev, [videoId]: '' }));
-    } catch (err) { console.error(err); alert("Errore invio commento"); }
-  };
-
-  const handleToggleLike = async (commentoId) => {
-    try {
-      await axios.put(`http://localhost:5001/api/commenti/${commentoId}/like`, { utenteId: user.id });
-      setLikedCommenti(prev => ({ ...prev, [commentoId]: !prev[commentoId] }));
-    } catch (err) { console.error(err); }
-  };
-
   if (!user) return null;
 
   const contentToDisplay = getContentToDisplay();
+  //Fine della parte logica
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
@@ -161,38 +120,57 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
-            <Link to="/dizionario" style={{ textDecoration: 'none' }}>
-                <button style={{
-                    background: 'linear-gradient(180deg, #eebb58 0%, #c49128 100%)', 
-                    color: '#2d1e0f',
-                    border: '1px solid #b68523',
-                    padding: '10px 20px',
-                    borderRadius: '50px',
-                    fontWeight: 'bold',
-                    fontSize: '0.95rem',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    transition: 'transform 0.1s'
-                }}
-                onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
-                onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
-                >
-                    📖 Il mio dizionario
-                    <span style={{ 
-                        backgroundColor: '#fff', 
-                        color: '#c49128', 
-                        borderRadius: '50%', 
-                        padding: '2px 6px', 
-                        fontSize: '0.8rem',
-                        fontWeight: '800'
-                    }}>
-                        {savedWords ? savedWords.length : 0}
-                    </span>
-                </button>
-            </Link>
-        </div>
+       <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+        <Link to="/dizionario" style={{ textDecoration: 'none' }}>
+            <button style={{
+                // Gradiente che richiama il brand e aumenta la visibilità
+                background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)', 
+                color: 'white', 
+                border: 'none',
+                padding: '10px 24px',
+                borderRadius: '50px',
+                fontWeight: '700',
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '12px',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)', // Ombra colorata per profondità
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 15px rgba(37, 99, 235, 0.35)';
+              e.currentTarget.style.filter = 'brightness(1.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.25)';
+              e.currentTarget.style.filter = 'brightness(1)';
+            }}
+            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <span style={{ fontSize: '1.2rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}></span> 
+              <span>Il mio dizionario</span>
+              <span style={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)', // Badge semitrasparente per eleganza
+                  color: '#fff', 
+                  borderRadius: '50%', 
+                  minWidth: '24px',
+                  height: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.8rem',
+                  fontWeight: '800',
+                  border: '1px solid rgba(255, 255, 255, 0.4)'
+                }}>
+                  {savedWords ? savedWords.length : 0}
+                </span>
+          </button>
+          </Link>
+  </div>
 
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
             <div style={{ 
