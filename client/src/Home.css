@@ -1,0 +1,21 @@
+/* Aggiungi al tuo Home.css */
+
+.hero-actions {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 2rem; /* Spaziatura consigliata per separarlo dal testo */
+}
+
+.btn-rounded {
+  border-radius: 999px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 2rem;
+}

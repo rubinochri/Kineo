@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react'; //Use state serve per visualizzare a schermo il cambio di uno stato (Es. premo su like e da 0 passa a 1)
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import VideoCard from './VideoCard'; 
+import './VideoLibrary.css'; // Importa il CSS
 
 export default function VideoLibrary({ savedWords, onToggleSave }) {
   const navigate = useNavigate();
   const [videos, setVideos] = useState([]); 
-  const [user, setUser] = useState(null); //Inizialmente null perchè non sappiamo chi è l'utente all'inizio
-  
+  const [user, setUser] = useState(null); 
   
   // UI & Filtri
   const [ricerca, setRicerca] = useState('');
@@ -18,18 +18,16 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [relatedEpisodes, setRelatedEpisodes] = useState([]); 
 
-  //Trova l'utente
   useEffect(() => {
     const storedUser = localStorage.getItem('userData');
-    if (!storedUser) { //Se non trova lo UserID lo rimanda al login forzatamente
+    if (!storedUser) {
       navigate('/login');
     } else {
-      setUser(JSON.parse(storedUser)); //Prende l'id dal local storage
+      setUser(JSON.parse(storedUser));
       fetchVideos();
     }
   }, [navigate]);
 
-  // Recupera i video
   const fetchVideos = async () => {
     try {
       const res = await axios.get('http://localhost:5001/api/videos');
@@ -38,26 +36,19 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
     } catch (err) {
       console.error("Errore caricamento video:", err);
     }
-};
+  };
 
-  // --- Problema dello scroll ad apertura video ---
-  // useEffect blocca la scrollbar della pagina principale (body) 
-  // quando c'è un video selezionato (la modale è aperta).
   useEffect(() => {
     if (selectedVideo) {
-      // Blocca lo scroll della pagina sotto e nasconde la sua barra
       document.body.style.overflow = 'hidden';
     } else {
-      // Riabilita lo scroll quando chiudi il video
       document.body.style.overflow = 'unset';
     }
-    // Cleanup: riabilita sempre se cambi pagina
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [selectedVideo]);
 
-  // --- LOGICA FILTRO E RAGGRUPPAMENTO ---
   const getContentToDisplay = () => {
     const filteredBase = videos.filter(video => 
       (video.titolo.toLowerCase().includes(ricerca.toLowerCase()) ||
@@ -66,7 +57,7 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
       (livelloDifficolta === '' || video.livelloDifficolta === livelloDifficolta) 
     );
 
-    if (viewMode === 'MOVIES') { //Se sono nella sezione "Film"
+    if (viewMode === 'MOVIES') {
       return filteredBase
         .filter(v => !v.serie)
         .map(v => ({ type: 'VIDEO', ...v, mainVideo: v }));
@@ -77,8 +68,8 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
         groups[video.serie].push(video);
       });
 
-      return Object.keys(groups).map(serieName => { //Se sono nella sezione "Serie TV"
-        const episodes = groups[serieName].sort((a, b) => a.episodio - b.episodio); //Crea una sola card che contiene tutti gli ep della serie
+      return Object.keys(groups).map(serieName => {
+        const episodes = groups[serieName].sort((a, b) => a.episodio - b.episodio);
         return {
           type: 'SERIES', 
           _id: `serie-${serieName}`,
@@ -104,96 +95,33 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
   if (!user) return null;
 
   const contentToDisplay = getContentToDisplay();
-  //Fine della parte logica
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+    <div className="library-container">
       
       {/* --- NAVBAR --- */}
-      <nav style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        padding: '15px 30px', 
-        background: 'white', 
-        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-        position: 'sticky', top: 0, zIndex: 100
-      }}>
+      <nav className="library-nav">
         
-       <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+       <div className="nav-section">
         <Link to="/dizionario" style={{ textDecoration: 'none' }}>
-            <button style={{
-                // Gradiente che richiama il brand e aumenta la visibilità
-                background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)', 
-                color: 'white', 
-                border: 'none',
-                padding: '10px 24px',
-                borderRadius: '50px',
-                fontWeight: '700',
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '12px',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)', // Ombra colorata per profondità
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 15px rgba(37, 99, 235, 0.35)';
-              e.currentTarget.style.filter = 'brightness(1.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.25)';
-              e.currentTarget.style.filter = 'brightness(1)';
-            }}
-            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              <span style={{ fontSize: '1.2rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}></span> 
+            <button className="btn-dictionary">
+              <span></span> 
               <span>Il mio dizionario</span>
-              <span style={{ 
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)', // Badge semitrasparente per eleganza
-                  color: '#fff', 
-                  borderRadius: '50%', 
-                  minWidth: '24px',
-                  height: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.8rem',
-                  fontWeight: '800',
-                  border: '1px solid rgba(255, 255, 255, 0.4)'
-                }}>
+              <span className="badge-count">
                   {savedWords ? savedWords.length : 0}
-                </span>
+              </span>
           </button>
-          </Link>
-  </div>
+        </Link>
+       </div>
 
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-            <div style={{ 
-                fontSize: '2rem', 
-                fontWeight: 'bold', 
-                background: 'linear-gradient(to right, #2563eb, #9333ea)', 
-                WebkitBackgroundClip: 'text', 
-                WebkitTextFillColor: 'transparent',
-                letterSpacing: '-1px'
-            }}>
-              Kineo
-            </div>
+        <div className="nav-section nav-center">
+            <div className="brand-text">Kineo</div>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-            <Link to="/dashboard" style={{ textDecoration: 'none', color: '#333', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{user.name}</span>
-              <div style={{ 
-                  width: '40px', height: '40px', 
-                  background: '#e0e7ff', borderRadius: '50%', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                  color: '#4338ca', border: '1px solid #c7d2fe'
-              }}>
+        <div className="nav-section nav-end">
+            <Link to="/dashboard" className="user-profile-link">
+              <span className="user-name">{user.name}</span>
+              <div className="user-avatar">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               </div>
             </Link>
@@ -201,77 +129,53 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
       </nav>
 
       {/* --- BODY PRINCIPALE --- */}
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px 20px' }}>
+      <div className="library-body">
         
         {/* HEADER CONTROLS */}
         {!selectedVideo && (
           <>
-            <h2 style={{ marginBottom: '20px', color: '#1f2937', textAlign: 'center' }}>Catalogo Video</h2>
+            <h2 className="controls-header">Catalogo Video</h2>
             
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+            <div className="search-container">
                  <input
                    type="text"
+                   className="search-input"
                    value={ricerca}
                    onChange={(e) => setRicerca(e.target.value)}
                    placeholder={viewMode === 'MOVIES' ? "Cerca film..." : "Cerca serie..."}
-                   style={{ width: '100%', maxWidth: '500px', padding: '12px 16px', borderRadius: '30px', border: '2px solid #e5e7eb', fontSize: '1rem', outline: 'none' }}
                  />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
-              <div style={{ 
-                position: 'relative', display: 'flex', backgroundColor: '#e5e7eb', 
-                borderRadius: '30px', padding: '4px', width: '250px', height: '40px',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{
-                  position: 'absolute', top: '4px', bottom: '4px', width: '50%',
-                  left: viewMode === 'MOVIES' ? '4px' : '50%',
-                  backgroundColor: 'white', borderRadius: '25px',
-                  transition: 'left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)', 
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                  zIndex: 1
-                }}></div>
+            {/* Switch Film/Serie */}
+            <div className="toggle-container">
+              <div className="toggle-track">
+                {/* Lo slider ha bisogno di stile inline per la posizione dinamica */}
+                <div 
+                  className="toggle-slider" 
+                  style={{ left: viewMode === 'MOVIES' ? '4px' : '50%' }}
+                ></div>
                 
                 <button 
                   onClick={() => setViewMode('MOVIES')} 
-                  style={{ 
-                    flex: 1, border: 'none', background: 'transparent', zIndex: 2, cursor: 'pointer',
-                    fontWeight: viewMode === 'MOVIES' ? '700' : '500', 
-                    color: viewMode === 'MOVIES' ? '#2563eb' : '#6b7280',
-                    transition: 'color 0.3s'
-                  }}
+                  className={`toggle-btn ${viewMode === 'MOVIES' ? 'active active-movies' : ''}`}
                 >
                   Film
                 </button>
                 <button 
                   onClick={() => setViewMode('SERIES')} 
-                  style={{ 
-                    flex: 1, border: 'none', background: 'transparent', zIndex: 2, cursor: 'pointer',
-                    fontWeight: viewMode === 'SERIES' ? '700' : '500', 
-                    color: viewMode === 'SERIES' ? '#9333ea' : '#6b7280',
-                    transition: 'color 0.3s'
-                  }}
+                  className={`toggle-btn ${viewMode === 'SERIES' ? 'active active-series' : ''}`}
                 >
                   Serie TV
                 </button>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px', gap: '10px', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: '600', color: '#1f2937', alignSelf: 'center' }}>Livello:</span>
+            {/* Filtri Livello */}
+            <div className="filters-container">
+            <span className="filter-label">Livello:</span>
             <button
                 onClick={() => setLivelloDifficolta('')}
-                style={{
-                padding: '8px 16px',
-                borderRadius: '6px',
-                border: livelloDifficolta === '' ? '2px solid #2563eb' : '2px solid #e5e7eb',
-                backgroundColor: livelloDifficolta === '' ? '#2563eb' : 'white',
-                color: livelloDifficolta === '' ? 'white' : '#1f2937',
-                cursor: 'pointer',
-                fontWeight: '600',
-                transition: 'all 0.3s'
-                }}
+                className={`btn-filter ${livelloDifficolta === '' ? 'active' : ''}`}
             >
                 Tutti
             </button>
@@ -279,16 +183,7 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
                 <button
                 key={livello}
                 onClick={() => setLivelloDifficolta(livello)}
-                style={{
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    border: livelloDifficolta === livello ? '2px solid #2563eb' : '2px solid #e5e7eb',
-                    backgroundColor: livelloDifficolta === livello ? '#2563eb' : 'white',
-                    color: livelloDifficolta === livello ? 'white' : '#1f2937',
-                    cursor: 'pointer',
-                    fontWeight: '600',
-                    transition: 'all 0.3s'
-                }}
+                className={`btn-filter ${livelloDifficolta === livello ? 'active' : ''}`}
                 >
                 {livello}
                 </button>
@@ -304,47 +199,42 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
               {viewMode === 'MOVIES' ? "Nessun video trovato." : "Nessuna serie trovata."}
             </p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px', animation: 'fadeIn 0.5s ease' }}>
+            <div className="video-grid">
               {contentToDisplay.map(item => (
                 <div 
                   key={item._id} 
+                  className="video-card"
                   onClick={() => handleCardClick(item)}
-                  style={{ 
-                    backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', 
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', cursor: 'pointer',
-                    display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', position: 'relative'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-5px)'}
-                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
                 >
                   {/* Badge SERIE */}
                   {item.type === 'SERIES' && (
-                    <div style={{ position: 'absolute', top: 10, left: 10, background: '#9333ea', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 10, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                    <div className="badge-series">
                       SERIE • {item.count} EP
                     </div>
                   )}
 
-                  <div style={{ 
-                    height: '160px', 
-                    background: item.mainVideo.copertina 
-                      ? `url("${item.mainVideo.copertina}") center/cover no-repeat` 
-                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative'
-                  }}>
-                      <div style={{position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)'}}></div>
-                      <span style={{ fontSize: '3rem', color: 'rgba(255,255,255,0.9)', zIndex: 2, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
+                  <div 
+                    className="card-thumbnail"
+                    style={{ 
+                      backgroundImage: item.mainVideo.copertina 
+                        ? `url("${item.mainVideo.copertina}")` 
+                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    }}
+                  >
+                      <div className="thumbnail-overlay"></div>
+                      <span className="play-icon">
                         {item.type === 'SERIES' ? '≣' : '▶'}
                       </span>
-                      <span style={{ position: 'absolute', top: '10px', right: '10px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', zIndex: 2 }}>
+                      <span className="badge-level">
                        {item.mainVideo.livelloDifficolta}
                       </span>
                   </div>
                   
-                  <div style={{ padding: '20px', flex: 1 }}>
-                    <h3 style={{ margin: '0 0 10px 0', fontSize: '1.1rem', color: '#1f2937' }}>
+                  <div className="card-info">
+                    <h3 className="card-title">
                       {item.type === 'SERIES' ? item.serie : item.mainVideo.titolo}
                     </h3>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#6b7280', display: '-webkit-box', WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <p className="card-desc">
                       {item.mainVideo.descrizione || "Nessuna descrizione."}
                     </p>
                   </div>
@@ -356,36 +246,23 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
 
         {/* MODAL PLAYER & EPISODES */}
         {selectedVideo && (
-          <div style={{
-            position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh',
-            backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 1000, 
-            overflowY: 'auto', 
-            padding: '40px 0'
-          }}>
+          <div className="modal-overlay">
             
             <button 
               onClick={() => setSelectedVideo(null)}
-              style={{ position: 'fixed', top: '20px', right: '30px', background: 'transparent', border: 'none', color: 'white', fontSize: '2.5rem', cursor: 'pointer', zIndex: 1002 }}
+              className="modal-close-btn"
             >
               &times;
             </button>
 
             {/* Contenitore Bianco */}
-            <div style={{ 
-              width: '95%', maxWidth: '1200px', 
-              backgroundColor: 'white', borderRadius: '12px', 
-              margin: '0 auto', 
-              overflow: 'hidden', 
-              display: 'flex', flexDirection: 'column', 
-              animation: 'slideUp 0.3s ease-out',
-              minHeight: 'auto'
-            }}>
+            <div className="modal-content">
               
-              <div style={{ display: 'flex', flexDirection: window.innerWidth < 900 ? 'column' : 'row' }}>
+              <div className="player-layout">
                 
                 {/* COLONNA SINISTRA: Player e Info */}
-                <div style={{ flex: 3, borderRight: '1px solid #e5e7eb' }}>
-                  <div style={{ backgroundColor: '#000' }}>
+                <div className="player-container">
+                  <div className="player-wrapper">
                       <VideoCard 
                         key={selectedVideo._id} 
                         video={selectedVideo} 
@@ -397,35 +274,24 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
 
                 {/* COLONNA DESTRA: Lista Episodi (Solo se Serie) */}
                 {relatedEpisodes.length > 0 && (
-                  <div style={{ 
-                      flex: 1, 
-                      backgroundColor: '#f3f4f6', 
-                      borderLeft: '1px solid #e5e7eb', 
-                      display: 'flex', flexDirection: 'column',
-                      maxHeight: window.innerWidth < 900 ? 'auto' : '800px'
-                  }}>
-                    <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', background: 'white' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Episodi</h3>
-                      <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>{selectedVideo.serie}</span>
+                  <div className="episodes-sidebar">
+                    <div className="episodes-header">
+                      <h3 className="episodes-title">Episodi</h3>
+                      <span className="episodes-subtitle">{selectedVideo.serie}</span>
                     </div>
-                    <div style={{ overflowY: 'auto', flex: 1, padding: '10px' }}>
+                    <div className="episodes-list">
                       {relatedEpisodes.map(ep => (
                         <div 
                           key={ep._id} 
                           onClick={() => setSelectedVideo(ep)}
-                          style={{ 
-                            padding: '10px', marginBottom: '10px', borderRadius: '6px', cursor: 'pointer',
-                            backgroundColor: selectedVideo._id === ep._id ? '#e0e7ff' : 'white',
-                            border: selectedVideo._id === ep._id ? '1px solid #6366f1' : '1px solid #e5e7eb',
-                            display: 'flex', gap: '10px', alignItems: 'center'
-                          }}
+                          className={`episode-item ${selectedVideo._id === ep._id ? 'active' : ''}`}
                         >
-                          <div style={{ fontWeight: 'bold', color: '#6b7280', fontSize: '0.9rem' }}>{ep.episodio}.</div>
-                          <div style={{ flex: 1 }}>
-                             <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1f2937' }}>{ep.titolo}</div>
-                             <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{ep.durataSecondi ? `${Math.floor(ep.durataSecondi / 60)} min` : ''}</div>
+                          <div className="ep-number">{ep.episodio}.</div>
+                          <div className="ep-info">
+                             <div className="ep-title">{ep.titolo}</div>
+                             <div className="ep-duration">{ep.durataSecondi ? `${Math.floor(ep.durataSecondi / 60)} min` : ''}</div>
                           </div>
-                          {selectedVideo._id === ep._id && <span style={{color: '#2563eb'}}>▶</span>}
+                          {selectedVideo._id === ep._id && <span className="ep-playing-icon">▶</span>}
                         </div>
                       ))}
                     </div>
@@ -433,10 +299,6 @@ export default function VideoLibrary({ savedWords, onToggleSave }) {
                 )}
               </div>
             </div>
-            <style>{`
-              @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-              @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-            `}</style>
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import './Login.css'; // Riutilizziamo lo stile condiviso
 
 export default function Register() {
   const navigate = useNavigate();
@@ -30,7 +31,6 @@ export default function Register() {
       await axios.post('http://localhost:5001/api/register', formData);
       
       // 2. AUTO-LOGIN IMMEDIATO
-      // Usiamo le stesse credenziali appena inserite per ottenere il token/sessione
       const loginRes = await axios.post('http://localhost:5001/api/login', {
         email: formData.email,
         password: formData.password
@@ -41,7 +41,7 @@ export default function Register() {
       // 3. SALVATAGGIO SESSIONE
       localStorage.setItem('userData', JSON.stringify(loginRes.data.user));
 
-      // 4. REINDIRIZZAMENTO ALLA LIBRERIA VIDEO
+      // 4. REINDIRIZZAMENTO
       setTimeout(() => {
         navigate('/videos');
       }, 1500);
@@ -57,29 +57,25 @@ export default function Register() {
       
       <div className="card-glass animate-enter">
         
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        {/* Intestazione */}
+        <div className="login-header">
           <h2 className="title-gradient title-lg">
             Crea account
           </h2>
-          <p style={{ fontSize: '1.1rem', color: '#6b7280' }}>
+          <p className="login-subtitle">
             Unisciti a Kineo e inizia ad imparare
           </p>
         </div>
 
-        {error && (
-          <div style={{ padding: '15px', borderRadius: '12px', background: '#fee2e2', color: '#991b1b', marginBottom: '25px', textAlign:'center', fontWeight:'600', fontSize: '0.95rem' }}>
-            {error}
-          </div>
-        )}
-        {success && (
-          <div style={{ padding: '15px', borderRadius: '12px', background: '#dcfce7', color: '#166534', marginBottom: '25px', textAlign:'center', fontWeight:'600', fontSize: '0.95rem' }}>
-            {success}
-          </div>
-        )}
+        {/* Feedback Messaggi */}
+        {error && <div className="alert-box alert-error">{error}</div>}
+        {success && <div className="alert-box alert-success">{success}</div>}
 
+        {/* Form */}
         <form onSubmit={handleSubmit}>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+          {/* Griglia per Nome e Cognome */}
+          <div className="form-grid-2">
             <div>
               <label className="form-label">Nome</label>
               <input 
@@ -102,7 +98,7 @@ export default function Register() {
             </div>
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
+          <div className="form-group">
             <label className="form-label">Username</label>
             <input 
               className="form-input" 
@@ -113,7 +109,7 @@ export default function Register() {
             />
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
+          <div className="form-group">
             <label className="form-label">Email</label>
             <input 
               className="form-input" 
@@ -125,7 +121,7 @@ export default function Register() {
             />
           </div>
           
-          <div style={{ marginBottom: '30px' }}>
+          <div className="form-group-last">
             <label className="form-label">Password</label>
             <input 
               className="form-input" 
@@ -137,14 +133,15 @@ export default function Register() {
             />
           </div>
           
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
+          <button type="submit" className="btn btn-primary btn-full">
             REGISTRATI
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '30px', fontSize: '1rem', color: '#6b7280' }}>
+        {/* Footer */}
+        <p className="login-footer">
           Hai già un account? 
-          <Link to="/login" style={{ color: '#0071e3', fontWeight: '600', textDecoration: 'none', marginLeft: '6px' }}>
+          <Link to="/login" className="link-highlight">
             Accedi qui
           </Link>
         </p>

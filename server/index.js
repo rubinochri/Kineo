@@ -390,6 +390,24 @@ app.put('/api/user/:id/dizionario/:wordId', async (req, res) => {
     }
 });
 
+// GET: Recupera tutti i commenti di un singolo utente
+app.get('/api/user/:id/commenti', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Cerca i commenti scritti da questo utente
+    // .populate('videoId', 'titolo') serve per mostrare "Video: Titolo Del Video" nel frontend
+    const commenti = await Commento.find({ utenteId: id })
+      .populate('videoId', 'titolo') 
+      .sort({ dataCreazione: -1 }); // Ordina dal più recente
+
+    res.json(commenti);
+  } catch (err) {
+    console.error("Errore fetch commenti utente:", err);
+    res.status(500).json({ msg: 'Errore server nel recupero commenti' });
+  }
+});
+
 // --- ALTRE ROTTE ---
 
 // POST: Traduzione semplice (usa il DB come dizionario statico)

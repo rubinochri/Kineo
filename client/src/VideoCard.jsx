@@ -299,6 +299,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
     if (video?._id) fetchComments();
   }, [video]);
   //Fine logica
+  
 
   return (
     <div className="card-container" style={{ width: '100%', maxWidth: '1000px', margin: '0 auto' }}>

@@ -1,0 +1,207 @@
+/* src/DictionaryPage.css */
+
+/* --- LAYOUT PAGINA --- */
+.dictionary-container {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+  padding: 40px 20px;
+}
+
+.dictionary-content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.dictionary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.page-title {
+  margin: 0;
+  color: #1e293b;
+  font-size: 2.5rem;
+}
+
+.back-link {
+  text-decoration: none;
+  color: #2563eb;
+  font-weight: bold;
+  font-size: 1rem;
+  transition: color 0.2s;
+}
+.back-link:hover { text-decoration: underline; color: #1d4ed8; }
+
+/* --- BARRA FILTRI --- */
+.filters-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 15px;
+  flex-wrap: wrap; /* Per mobile */
+}
+
+.filter-btn {
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn.active {
+  background-color: #2563eb;
+  color: white;
+}
+
+.filter-btn.inactive {
+  background-color: transparent;
+  color: #64748b;
+}
+.filter-btn.inactive:hover { background-color: #e2e8f0; }
+
+/* --- STATO VUOTO --- */
+.empty-state {
+  text-align: center;
+  padding: 60px;
+  color: #64748b;
+}
+.btn-cta {
+  background-color: #2563eb;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 15px;
+}
+
+/* --- CARD PAROLA --- */
+.word-card {
+  background-color: white;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  overflow: hidden;
+  transition: all 0.3s;
+  border-left-width: 6px;
+  border-left-style: solid;
+}
+
+.word-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+/* Colori bordo laterale */
+.status-learned { border-left-color: #4caf50; }
+.status-learning { border-left-color: #f59e0b; }
+
+.card-inner {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.card-main { flex: 1; }
+
+.card-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.word-original {
+  margin: 0;
+  color: #333;
+  font-size: 1.4rem;
+}
+
+.badge-completed {
+  font-size: 0.7rem;
+  background: #dcfce7;
+  color: #166534;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #bbf7d0;
+  font-weight: 600;
+}
+
+.word-translation {
+  margin: 0 0 15px 0;
+  color: #666;
+  font-size: 1.1rem;
+  font-style: italic;
+}
+
+.notes-wrapper { marginTop: 15px; }
+
+.notes-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.notes-textarea:focus { border-color: #2563eb; background-color: white; }
+
+/* --- BOTTONI AZIONE CARD --- */
+.card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 180px;
+  flex-shrink: 0; /* Impedisce ai bottoni di schiacciarsi */
+}
+
+.btn-card {
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+/* Bottone Segna come Fatta/Da Fare */
+.btn-toggle-learned {
+  background-color: #15803d;
+  border: 1px solid #15803d;
+  color: white;
+}
+.btn-toggle-learned:hover { background-color: #166534; }
+
+.btn-toggle-learning {
+  background-color: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #b45309;
+}
+.btn-toggle-learning:hover { background-color: #fef3c7; }
+
+/* Bottone Elimina */
+.btn-delete {
+  background-color: white;
+  border: 1px solid #fee2e2;
+  color: #ef4444;
+}
+.btn-delete:hover { background-color: #fef2f2; border-color: #fca5a5; }
+
+/* Responsive Mobile */
+@media (max-width: 640px) {
+  .card-inner { flex-direction: column; }
+  .card-actions { width: 100%; flex-direction: row; }
+  .btn-card { flex: 1; }
+}

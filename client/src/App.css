@@ -199,16 +199,6 @@ video::-webkit-media-controls-fullscreen-button { display: none !important; }
   resize: vertical;
 }
 
-.btn-primary {
-  background-color: #2563eb;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.btn-primary:hover { background-color: #1d4ed8; }
 
 /* --- LISTA COMMENTI espandibile (Stile YouTube) --- */
 .comment-list {
