@@ -127,7 +127,7 @@ export default function AdminDashboard() {
         {/* HEADER & NAV */}
         <div className="admin-header">
           <h2 className="title-gradient title-lg">Admin Dashboard</h2>
-          <button onClick={() => navigate('/videos')} className="btn btn-secondary btn-logout">Kineo</button>
+          <button onClick={() => navigate('/login')} className="btn btn-secondary btn-logout">Esci</button>
         </div>
 
         {/* MENU TABS */}
