@@ -1,0 +1,99 @@
+/* src/Login.css */
+
+.intestazione-login {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.sottotitolo-login {
+  font-size: 1.1rem;
+  color: var(--text-muted); /* Usa la variabile definita in globals.css */
+  margin-top: 5px;
+}
+
+.box-avviso {
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.avviso-errore {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.avviso-successo {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.gruppo-form {
+  margin-bottom: 20px;
+}
+
+.gruppo-form-ultimo {
+  margin-bottom: 30px;
+}
+
+.etichetta-form {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.input-form {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.input-form:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.bottone-pieno {
+  width: 100%;
+}
+
+.footer-login {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.link-evidenziato {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+  margin-left: 6px;
+}
+
+.link-evidenziato:hover {
+  text-decoration: underline;
+}
+
+/* Griglia per layout a due colonne (utile se ricopiata in Register) */
+.griglia-form-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 640px) {
+  .griglia-form-2 {
+    grid-template-columns: 1fr; /* Su mobile vanno uno sotto l'altro */
+  }
+}

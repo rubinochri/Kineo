@@ -1,0 +1,77 @@
+/* src/Register.css */
+
+.intestazione-registrazione {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.sottotitolo-registrazione {
+  font-size: 1.1rem;
+  color: var(--text-muted); /* Variabile da globals.css */
+  margin-top: 5px;
+}
+
+.box-avviso {
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.avviso-errore {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.avviso-successo {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.gruppo-form {
+  margin-bottom: 20px;
+}
+
+.gruppo-form-ultimo {
+  margin-bottom: 30px;
+}
+
+.bottone-pieno {
+  width: 100%;
+}
+
+.footer-registrazione {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.link-evidenziato {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+  margin-left: 6px;
+}
+
+.link-evidenziato:hover {
+  text-decoration: underline;
+}
+
+/* Griglia specifica per la registrazione */
+.griglia-form-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 640px) {
+  .griglia-form-2 {
+    grid-template-columns: 1fr; /* Su mobile vanno uno sotto l'altro */
+  }
+}

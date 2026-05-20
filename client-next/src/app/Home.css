@@ -1,0 +1,13 @@
+/* Stili specifici solo per la Home */
+
+.azioni-hero {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.bottone-arrotondato {
+  border-radius: 999px;
+}

@@ -1,0 +1,181 @@
+/* src/app/dizionario/DictionaryPage.css */
+
+.contenitore-dizionario {
+    min-height: 100vh;
+    padding: 40px 20px;
+}
+  
+.contenuto-dizionario {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+  
+/* INTESTAZIONE */
+.intestazione-dizionario {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+  
+.titolo-pagina {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #111827;
+}
+  
+.link-indietro {
+    text-decoration: none;
+    color: #4b5563;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+.link-indietro:hover {
+    color: #2563eb;
+}
+  
+/* FILTRI */
+.barra-filtri {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    background: white;
+    padding: 5px;
+    border-radius: 12px;
+    width: fit-content;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+  
+.bottone-filtro {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #6b7280;
+    transition: all 0.2s;
+}
+  
+.bottone-filtro.attivo {
+    background-color: #e0e7ff;
+    color: #2563eb;
+}
+  
+/* STATO VUOTO */
+.stato-vuoto {
+    text-align: center;
+    padding: 60px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+  
+.bottone-cta {
+    margin-top: 20px;
+    padding: 12px 24px;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+  
+/* GRIGLIA LISTA PAROLE */
+.lista-parole {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+  
+/* STILI SCHEDA */
+.scheda-parola {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+}
+  
+.scheda-parola:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+  
+.scheda-parola.stato-imparato { border-left: 5px solid #10b981; }
+.scheda-parola.stato-apprendimento { border-left: 5px solid #f59e0b; }
+  
+.interno-scheda {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+  
+.principale-scheda { flex-grow: 1; }
+  
+.riga-intestazione-scheda {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 5px;
+}
+  
+.parola-originale {
+    font-size: 1.5rem;
+    color: #111827;
+    margin: 0;
+}
+  
+.badge-completato {
+    background-color: #d1fae5;
+    color: #065f46;
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    border-radius: 99px;
+    font-weight: 700;
+}
+  
+.traduzione-parola {
+    color: #6b7280;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+  
+.textarea-note {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    resize: vertical;
+    font-size: 0.9rem;
+    background-color: #f9fafb;
+}
+  
+/* AZIONI */
+.azioni-scheda {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+  
+.bottone-scheda {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: none;
+    font-weight: 600;
+}
+  
+.bottone-alterna-imparato { background-color: #d1fae5; color: #047857; }
+.bottone-alterna-apprendimento { background-color: #fffbeb; color: #b45309; }
+.bottone-elimina { background-color: transparent; color: #ef4444; }
