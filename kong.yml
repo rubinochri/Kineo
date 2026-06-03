@@ -1,0 +1,21 @@
+_format_version: "3.0"
+services:
+  - name: kineo-dizionario
+    url: http://dizionario:5002
+    routes:
+      - name: route-translate
+        paths:
+          - /api/translate
+        strip_path: false
+      - name: route-dizionario-utente
+        paths:
+          - ~/api/user/.*/dizionario  # Regex per gestire ID dinamici
+        strip_path: false
+
+  - name: kineo-monolith
+    url: http://monolith:5001
+    routes:
+      - name: route-monolith-fallback
+        paths:
+          - /api
+        strip_path: false
