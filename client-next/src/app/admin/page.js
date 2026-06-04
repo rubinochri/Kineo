@@ -62,15 +62,15 @@ export default function DashboardAmministratore() {
 
   // --- CHIAMATE API ---
   const recuperaVideo = async () => {
-    try { const risposta = await axios.get('http://localhost:5001/api/videos'); setListaVideo(risposta.data); } 
+    try { const risposta = await axios.get('http://localhost:8000/api/videos'); setListaVideo(risposta.data); } 
     catch (errore) { console.error(errore); }
   };
   const recuperaUtenti = async () => {
-    try { const risposta = await axios.get('http://localhost:5001/api/users'); setUtenti(risposta.data); } 
+    try { const risposta = await axios.get('http://localhost:8000/api/users'); setUtenti(risposta.data); } 
     catch (errore) { console.error(errore); }
   };
   const recuperaCommenti = async () => {
-    try { const risposta = await axios.get('http://localhost:5001/api/comments/all'); setCommenti(risposta.data); } 
+    try { const risposta = await axios.get('http://localhost:8000/api/comments/all'); setCommenti(risposta.data); } 
     catch (errore) { console.error(errore); }
   };
 
@@ -86,10 +86,10 @@ export default function DashboardAmministratore() {
       if (!payload.episodio) delete payload.episodio;
 
       if (inModifica) {
-        await axios.patch(`http://localhost:5001/api/videos/${idModifica}`, payload);
+        await axios.patch(`http://localhost:8000/api/videos/${idModifica}`, payload);
         setMessaggio({ testo: '✅ Video aggiornato!', tipo: 'success' });
       } else {
-        const risposta = await axios.post('http://localhost:5001/api/videos', payload);
+        const risposta = await axios.post('http://localhost:8000/api/videos', payload);
         setMessaggio({ testo: '✅ Video creato! ID: ' + risposta.data._id, tipo: 'success' });
         setDatiSottotitoli(prec => ({ ...prec, id: risposta.data._id }));
       }
@@ -109,7 +109,7 @@ export default function DashboardAmministratore() {
         throw new Error("JSON non valido. Controlla la sintassi.");
       }
 
-      await axios.patch(`http://localhost:5001/api/videos/${datiSottotitoli.id}/segmenti`, { segmenti: jsonParsato });
+      await axios.patch(`http://localhost:8000/api/videos/${datiSottotitoli.id}/segmenti`, { segmenti: jsonParsato });
       setMessaggio({ testo: '✅ Sottotitoli caricati con successo!', tipo: 'success' });
       setDatiSottotitoli({ id: '', json: '' });
     } catch (errore) { setMessaggio({ testo: '❌ Errore: ' + errore.message, tipo: 'error' }); }
@@ -117,15 +117,15 @@ export default function DashboardAmministratore() {
 
   const gestisciEliminazioneVideo = async (id) => {
     if (!window.confirm("Sei sicuro di voler eliminare questo video?")) return;
-    try { await axios.delete(`http://localhost:5001/api/videos/${id}`); recuperaVideo(); } catch (errore) {}
+    try { await axios.delete(`http://localhost:8000/api/videos/${id}`); recuperaVideo(); } catch (errore) {}
   };
   const gestisciEliminazioneUtente = async (id) => {
     if (!window.confirm("Eliminare utente?")) return;
-    try { await axios.delete(`http://localhost:5001/api/user/${id}`); recuperaUtenti(); } catch (errore) { alert("Errore"); }
+    try { await axios.delete(`http://localhost:8000/api/user/${id}`); recuperaUtenti(); } catch (errore) { alert("Errore"); }
   };
   const gestisciEliminazioneCommento = async (id) => {
     if (!window.confirm("Eliminare commento?")) return;
-    try { await axios.delete(`http://localhost:5001/api/admin/comments/${id}`); recuperaCommenti(); } catch (errore) { alert("Errore"); }
+    try { await axios.delete(`http://localhost:8000/api/admin/comments/${id}`); recuperaCommenti(); } catch (errore) { alert("Errore"); }
   };
 
   const gestisciModificaVideo = (video) => {

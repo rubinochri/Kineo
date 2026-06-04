@@ -43,7 +43,7 @@ function Dashboard() {
   const recuperaDatiUtente = async () => {
     try {
       setCaricamento(true);
-      const risposta = await axios.get(`http://localhost:5001/api/user/${utenteLoggato.id}`);
+      const risposta = await axios.get(`http://localhost:8000/api/user/${utenteLoggato.id}`);
       setDatiUtente(risposta.data);
       setDatiModificati(risposta.data);
       setMessaggio('');
@@ -80,7 +80,7 @@ function Dashboard() {
 
     try {
       setCaricamento(true);
-      const risposta = await axios.put(`http://localhost:5001/api/user/${utenteLoggato.id}`, {
+      const risposta = await axios.put(`http://localhost:8000/api/user/${utenteLoggato.id}`, {
         nome: datiModificati.nome,
         cognome: datiModificati.cognome,
         username: datiModificati.username,
@@ -125,7 +125,7 @@ function Dashboard() {
   const recuperaCommentiUtente = async () => {
     try {
       setCaricamentoCommenti(true);
-      const risposta = await axios.get(`http://localhost:5001/api/user/${utenteLoggato.id}/commenti`);
+      const risposta = await axios.get(`http://localhost:8000/api/user/${utenteLoggato.id}/commenti`);
       setCommentiUtente(risposta.data);
       setMostraCommenti(true);
     } catch (errore) {
@@ -138,7 +138,7 @@ function Dashboard() {
 
   const gestisciLikeCommento = async (idCommento) => {
     try {
-      const risposta = await axios.put(`http://localhost:5001/api/commenti/${idCommento}/like`, {
+      const risposta = await axios.put(`http://localhost:8000/api/commenti/${idCommento}/like`, {
         utenteId: utenteLoggato.id
       });
       setCommentiUtente(prec => prec.map(c => c._id === idCommento ? { ...c, like: risposta.data.like } : c));
@@ -153,7 +153,7 @@ function Dashboard() {
 
     try {
       setCaricamento(true);
-      await axios.delete(`http://localhost:5001/api/user/${utenteLoggato.id}`);
+      await axios.delete(`http://localhost:8000/api/user/${utenteLoggato.id}`);
       localStorage.removeItem('userData');
       setMessaggio('Profilo eliminato');
       setTimeout(() => router.push('/'), 1500); 
