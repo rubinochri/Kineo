@@ -1,6 +1,15 @@
 _format_version: "3.0"
 
 services:
+  - name: kineo-auth
+    url: http://auth:5005
+    routes:
+      - name: route-auth
+        paths:
+          - /api/login
+          - /api/register
+        strip_path: false
+
   - name: kineo-dizionario
     url: http://dizionario:5002
     routes:
