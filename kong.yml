@@ -41,6 +41,17 @@ services:
           - /api/commenti
           - ~/api/user/.*/commenti
         strip_path: false
+   
+
+  - name: kineo-user
+    url: http://user:5007
+    routes:
+      - name: route-user
+        paths:
+          - /api/users
+          - ~/api/user/[^/]+$
+        strip_path: false
+
 
   - name: kineo-monolith
     url: http://monolith:5001
