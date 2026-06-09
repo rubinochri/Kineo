@@ -1,7 +1,8 @@
 // 1. IMPORTAZIONE DELLE LIBRERIE
 const express = require('express');   
 const mongoose = require('mongoose'); 
-const cors = require('cors');         
+const cors = require('cors');
+const bcrypt = require('bcryptjs'); // REINSERITO: Necessario per hash password
 require('dotenv').config();           
 
 // 2. IMPORTAZIONE DEI MODELLI (Schemi dei dati)
@@ -12,7 +13,7 @@ const Commento = require('./models/Commento');
 // Inizializziamo l'applicazione Express
 const app = express();
 
-// 3. MIDDLEWARE (Funzioni eseguite prima di arrivare alle rotte)
+// 3. MIDDLEWARE
 app.use(cors());          
 app.use(express.json());  
 
@@ -24,102 +25,6 @@ mongoose.connect(process.env.MONGODB_URI)
 // ---------------------------------------------------------
 // 5. API ROUTES (Punti di accesso per il Frontend)
 // ---------------------------------------------------------
-
-// --- VIDEO ROUTES (CRUD COMPLETO) ---
-
-app.get('/api/videos', async (req, res) => {
-  try {
-    const listaVideo = await Video.find(); 
-    res.json(listaVideo); 
-  } catch (errore) {
-    res.status(500).json({ message: errore.message }); 
-  }
-});
-
-app.get('/api/videos/:id', async (req, res) => { 
-  try {
-    const videoTrovato = await Video.findById(req.params.id); 
-    if (!videoTrovato) return res.status(404).json({ message: 'Video non trovato' }); 
-    res.json(videoTrovato); 
-  } catch (errore) {
-    res.status(500).json({ message: errore.message }); 
-  }
-});
-
-app.post('/api/videos', async (req, res) => {
-  try {
-    const { titolo, url, livelloDifficolta, copertina, descrizione, serie, episodio } = req.body;
-
-    if (!titolo || !url || !livelloDifficolta) {
-      return res.status(400).json({ message: "Titolo, URL e Livello Difficoltà sono obbligatori." });
-    }
-
-    const nuovoVideo = new Video({
-      titolo,
-      url,
-      livelloDifficolta,
-      copertina,
-      descrizione,
-      serie: serie || '',       
-      episodio: episodio || '', 
-      segmenti: [] 
-    });
-
-    const videoSalvato = await nuovoVideo.save(); 
-    res.status(201).json(videoSalvato); 
-  } catch (errore) {
-    res.status(400).json({ message: errore.message }); 
-  }
-});
-
-app.patch('/api/videos/:id', async (req, res) => {
-  try {
-    const datiAggiornamento = req.body; 
-    const opzioniQuery = { new: true, runValidators: true }; 
-
-    const videoModificato = await Video.findByIdAndUpdate(
-      req.params.id,
-      datiAggiornamento,
-      opzioniQuery
-    );
-
-    if (!videoModificato) return res.status(404).json({ message: "Video non trovato" });
-    res.json(videoModificato); 
-  } catch (errore) {
-    res.status(400).json({ message: errore.message });
-  }
-});
-
-app.patch('/api/videos/:id/segmenti', async (req, res) => {
-  try {
-    const { segmenti } = req.body; 
-
-    if (!Array.isArray(segmenti)) {
-      return res.status(400).json({ message: "Il body deve contenere un array 'segmenti'." });
-    }
-
-    const videoModificato = await Video.findByIdAndUpdate(
-      req.params.id,
-      { segmenti: segmenti },
-      { new: true, runValidators: true } 
-    );
-
-    if (!videoModificato) return res.status(404).json({ message: 'Video non trovato' });
-    res.json(videoModificato);
-  } catch (errore) {
-    res.status(400).json({ message: errore.message });
-  }
-});
-
-app.delete('/api/videos/:id', async (req, res) => {
-  try {
-    const videoEliminato = await Video.findByIdAndDelete(req.params.id); 
-    if (!videoEliminato) return res.status(404).json({ message: "Video non trovato" });
-    res.json({ message: "Video eliminato con successo" }); 
-  } catch (errore) {
-    res.status(500).json({ message: errore.message });
-  }
-});
 
 // --- ADMIN DASHBOARD ROUTES ---
 
@@ -155,7 +60,69 @@ app.delete('/api/admin/comments/:id', async (req, res) => {
 });
 
 
-// --- UTENTI (Gestione Profilo) ---
+// --- AUTENTICAZIONE (Login e Registrazione) ---
+
+// REINSERITO: Intestazione rotta di registrazione mancante
+app.post('/api/register', async (req, res) => {
+  try {
+    const { nome, cognome, username, email, password } = req.body;
+
+    // Validazione campi obbligatori
+    if (!nome || !cognome || !username || !email || !password) {
+      return res.status(400).json({ msg: "Tutti i campi sono obbligatori." });
+    }
+
+    // Controlla se l'email esiste già nel DB
+    const utenteEsistente = await Utente.findOne({ email });
+    if (utenteEsistente) return res.status(400).json({ msg: "Email già registrata." });
+
+    // Criptazione password
+    const saltGenerato = await bcrypt.genSalt(10); 
+    const passwordHash = await bcrypt.hash(password, saltGenerato); 
+
+    // Crea l'oggetto utente
+    const nuovoUtente = new Utente({
+      nome, cognome, username, email, password: passwordHash 
+    });
+
+    await nuovoUtente.save(); 
+    res.status(201).json({ msg: "Registrazione completata con successo!" });
+  } catch (errore) {
+    console.error("Errore server:", errore);
+    res.status(500).json({ msg: "Errore interno del server." });
+  }
+});
+
+// POST: Login utente
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) return res.status(400).json({ msg: "Inserisci email e password." });
+
+    const utenteTrovato = await Utente.findOne({ email });
+    if (!utenteTrovato) return res.status(400).json({ msg: "Credenziali non valide." }); 
+
+    const passwordCorrisponde = await bcrypt.compare(password, utenteTrovato.password);
+    if (!passwordCorrisponde) return res.status(400).json({ msg: "Credenziali non valide." }); 
+
+    res.json({
+      msg: "Login effettuato con successo!",
+      user: {
+        id: utenteTrovato._id,
+        nome: utenteTrovato.nome,
+        username: utenteTrovato.username,
+        email: utenteTrovato.email,
+        ruolo: utenteTrovato.ruolo
+      }
+    });
+  } catch (errore) {
+    console.error("Errore Login:", errore);
+    res.status(500).json({ msg: "Errore server." });
+  }
+});
+
+// --- UTENTI (Gestione Profilo ) ---
 
 app.get('/api/user/:id', async (req, res) => {
   try {
@@ -239,7 +206,6 @@ app.get('/api/user/:id/commenti', async (req, res) => {
 });
 
 // --- ALTRE ROTTE ---
-
 
 app.get('/api/commenti/video/:videoId', async (req, res) => {
   try {
