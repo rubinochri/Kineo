@@ -15,6 +15,9 @@ services:
     container_name: kineo_dizionario
     environment:
       - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_dizionario?retryWrites=true&w=majority&appName=Cluster0
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - rabbitmq
     networks:
       - kineo_net
 
@@ -23,6 +26,9 @@ services:
     container_name: kineo_catalogo
     environment:
       - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_catalogo?retryWrites=true&w=majority&appName=Cluster0
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - rabbitmq
     networks:
       - kineo_net
 
