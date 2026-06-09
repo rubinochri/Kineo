@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const SavedWord = require('./models/SavedWord');
 const Dizionario = require('./models/Dizionario');
+const { connectRabbitMQ } = require('./rabbitmq');
 
 const app = express();
 app.use(cors());
@@ -15,7 +16,10 @@ const maskedUri = mongoUri ? mongoUri.replace(/:([^@]+)@/, ':******@') : 'undefi
 console.log(`[DIZIONARIO] Tentativo di connessione a MongoDB: ${maskedUri}`);
 
 mongoose.connect(mongoUri)
-  .then(() => console.log('MongoDB Connesso - Microservizio Dizionario'))
+  .then(() => {
+    console.log('MongoDB Connesso - Microservizio Dizionario');
+    connectRabbitMQ();
+  })
   .catch(err => console.error('Errore DB Dizionario:', err));
 
 // Helper function to map flat database schema to the expected frontend/monolith keys

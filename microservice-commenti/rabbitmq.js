@@ -1,7 +1,11 @@
 const amqp = require('amqplib');
 const Commento = require('./models/Commento');
 
-const QUEUE_NAME = 'user-deleted-queue';
+const USER_EXCHANGE = 'user-events-exchange';
+const USER_QUEUE = 'user-deleted-commenti-queue';
+
+const VIDEO_EXCHANGE = 'video-events-exchange';
+const VIDEO_QUEUE = 'video-deleted-commenti-queue';
 
 async function connectRabbitMQ() {
   const rabbitmqUrl = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
@@ -12,72 +16,114 @@ async function connectRabbitMQ() {
 
   while (retryCount < maxRetries) {
     try {
-      console.log(`[RABBITMQ] Tentativo di connessione a RabbitMQ (${retryCount + 1}/${maxRetries})...`);
+      console.log(`[RABBITMQ-COMMENTI] Tentativo di connessione a RabbitMQ (${retryCount + 1}/${maxRetries})...`);
       connection = await amqp.connect(rabbitmqUrl);
       channel = await connection.createChannel();
-      console.log('[RABBITMQ] Connesso con successo a RabbitMQ!');
+      console.log('[RABBITMQ-COMMENTI] Connesso con successo a RabbitMQ!');
       break;
     } catch (err) {
       retryCount++;
-      console.error(`[RABBITMQ] Errore connessione, nuovo tentativo tra 5 secondi: ${err.message}`);
+      console.error(`[RABBITMQ-COMMENTI] Errore connessione, nuovo tentativo tra 5 secondi: ${err.message}`);
       await new Promise(resolve => setTimeout(resolve, 5000));
     }
   }
 
   if (!connection || !channel) {
-    console.error('[RABBITMQ] Errore critico: Impossibile stabilire una connessione stabile con RabbitMQ.');
+    console.error('[RABBITMQ-COMMENTI] Errore critico: Impossibile stabilire una connessione stabile con RabbitMQ.');
     return;
   }
 
   // Gestione disconnessione / errori del canale
   connection.on('error', (err) => {
-    console.error('[RABBITMQ] Connessione interrotta da un errore:', err);
+    console.error('[RABBITMQ-COMMENTI] Connessione interrotta da un errore:', err);
   });
   connection.on('close', () => {
-    console.error('[RABBITMQ] Connessione chiusa. Tentativo di riavvio in corso...');
+    console.error('[RABBITMQ-COMMENTI] Connessione chiusa. Tentativo di riavvio in corso...');
     setTimeout(connectRabbitMQ, 5000);
   });
 
-  // Assicura che la coda esista
-  await channel.assertQueue(QUEUE_NAME, { durable: true });
-  console.log(`[RABBITMQ] In ascolto sulla coda "${QUEUE_NAME}"...`);
+  try {
+    // ----------------------------------------------------
+    // 1. Configurazione Canale e Code per USER DELETED
+    // ----------------------------------------------------
+    await channel.assertExchange(USER_EXCHANGE, 'fanout', { durable: true });
+    await channel.assertQueue(USER_QUEUE, { durable: true });
+    await channel.bindQueue(USER_QUEUE, USER_EXCHANGE, '');
+    console.log(`[RABBITMQ-COMMENTI] Coda "${USER_QUEUE}" legata all'exchange "${USER_EXCHANGE}"`);
 
-  // Registrazione del consumer
-  channel.consume(QUEUE_NAME, async (msg) => {
-    if (msg !== null) {
-      try {
-        const content = msg.content.toString();
-        console.log(`[RABBITMQ] Messaggio ricevuto su "${QUEUE_NAME}":`, content);
-
-        let userId = null;
-
-        // Tenta di fare il parsing del JSON
+    // Consumer per la cancellazione dell'utente
+    channel.consume(USER_QUEUE, async (msg) => {
+      if (msg !== null) {
         try {
-          const data = JSON.parse(content);
-          userId = data.userId || data.id || data.utenteId;
-        } catch (e) {
-          // Se non è JSON valido, assume che il contenuto sia direttamente l'ID
-          userId = content.trim();
-        }
+          const content = msg.content.toString();
+          console.log(`[RABBITMQ-COMMENTI] Messaggio ricevuto su "${USER_QUEUE}":`, content);
 
-        if (userId) {
-          console.log(`[RABBITMQ] Avvio cancellazione di massa per utenteId: ${userId}`);
-          
-          // Eventual Consistency: Elimina tutti i commenti (e risposte) inviati da questo utente
-          const risultato = await Commento.deleteMany({ utenteId: userId });
-          console.log(`[RABBITMQ] Cancellati ${risultato.deletedCount} commenti inviati dall'utente ${userId}.`);
-        } else {
-          console.warn('[RABBITMQ] Impossibile estrarre un userId valido dal messaggio.');
-        }
+          let userId = null;
+          try {
+            const data = JSON.parse(content);
+            userId = data.userId || data.id || data.utenteId;
+          } catch (e) {
+            userId = content.trim();
+          }
 
-        channel.ack(msg);
-      } catch (err) {
-        console.error('[RABBITMQ] Errore durante l\'elaborazione del messaggio:', err);
-        // Esegui nack con requeue a false per evitare loop infiniti su errori applicativi persistenti
-        channel.nack(msg, false, false);
+          if (userId) {
+            console.log(`[RABBITMQ-COMMENTI] Avvio cancellazione di massa commenti per utenteId: ${userId}`);
+            const risultato = await Commento.deleteMany({ utenteId: userId });
+            console.log(`[RABBITMQ-COMMENTI] Cancellati ${risultato.deletedCount} commenti inviati dall'utente ${userId}.`);
+          } else {
+            console.warn('[RABBITMQ-COMMENTI] Impossibile estrarre un userId valido dal messaggio.');
+          }
+
+          channel.ack(msg);
+        } catch (err) {
+          console.error('[RABBITMQ-COMMENTI] Errore durante l\'elaborazione del messaggio di cancellazione utente:', err);
+          channel.nack(msg, false, false);
+        }
       }
-    }
-  }, { noAck: false });
+    }, { noAck: false });
+
+    // ----------------------------------------------------
+    // 2. Configurazione Canale e Code per VIDEO DELETED
+    // ----------------------------------------------------
+    await channel.assertExchange(VIDEO_EXCHANGE, 'fanout', { durable: true });
+    await channel.assertQueue(VIDEO_QUEUE, { durable: true });
+    await channel.bindQueue(VIDEO_QUEUE, VIDEO_EXCHANGE, '');
+    console.log(`[RABBITMQ-COMMENTI] Coda "${VIDEO_QUEUE}" legata all'exchange "${VIDEO_EXCHANGE}"`);
+
+    // Consumer per la cancellazione del video
+    channel.consume(VIDEO_QUEUE, async (msg) => {
+      if (msg !== null) {
+        try {
+          const content = msg.content.toString();
+          console.log(`[RABBITMQ-COMMENTI] Messaggio ricevuto su "${VIDEO_QUEUE}":`, content);
+
+          let videoId = null;
+          try {
+            const data = JSON.parse(content);
+            videoId = data.videoId || data.id;
+          } catch (e) {
+            videoId = content.trim();
+          }
+
+          if (videoId) {
+            console.log(`[RABBITMQ-COMMENTI] Avvio cancellazione di massa commenti per videoId: ${videoId}`);
+            const risultato = await Commento.deleteMany({ videoId: videoId });
+            console.log(`[RABBITMQ-COMMENTI] Cancellati ${risultato.deletedCount} commenti collegati al video ${videoId}.`);
+          } else {
+            console.warn('[RABBITMQ-COMMENTI] Impossibile estrarre un videoId valido dal messaggio.');
+          }
+
+          channel.ack(msg);
+        } catch (err) {
+          console.error('[RABBITMQ-COMMENTI] Errore durante l\'elaborazione del messaggio di cancellazione video:', err);
+          channel.nack(msg, false, false);
+        }
+      }
+    }, { noAck: false });
+
+  } catch (err) {
+    console.error('[RABBITMQ-COMMENTI] Errore durante l\'asserzione o il binding delle code:', err);
+  }
 }
 
 module.exports = { connectRabbitMQ };

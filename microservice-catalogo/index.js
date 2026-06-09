@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 const Video = require('./models/Video');
+const { connectRabbitMQ, publishVideoDeleted } = require('./rabbitmq');
 
 const app = express();
 
@@ -10,7 +11,10 @@ app.use(cors());
 app.use(express.json());
 
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB Connesso - Microservizio Catalogo'))
+  .then(() => {
+    console.log('MongoDB Connesso - Microservizio Catalogo');
+    connectRabbitMQ();
+  })
   .catch(errore => console.error('Errore connessione DB Catalogo:', errore));
 
 /*
@@ -137,6 +141,13 @@ app.delete('/api/videos/:id', async (req, res) => {
 
     if (!videoEliminato) {
       return res.status(404).json({ message: 'Video non trovato' });
+    }
+
+    // Pubblica il messaggio su RabbitMQ
+    try {
+      await publishVideoDeleted(req.params.id);
+    } catch (rabbitErr) {
+      console.error(`[RABBITMQ] Errore nell'invio della notifica di cancellazione per il video ${req.params.id}:`, rabbitErr.message);
     }
 
     res.json({ message: 'Video eliminato con successo' });
