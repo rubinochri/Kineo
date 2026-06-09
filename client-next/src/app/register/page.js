@@ -31,10 +31,10 @@ export default function Registrazione() {
     
     try {
       // 1. REGISTRAZIONE UTENTE
-      await axios.post('http://localhost:5001/api/register', datiModulo);
+      await axios.post('http://localhost:8000/api/register', datiModulo);
       
       // 2. AUTO-LOGIN IMMEDIATO
-      const rispostaLogin = await axios.post('http://localhost:5001/api/login', {
+      const rispostaLogin = await axios.post('http://localhost:8000/api/login', {
         email: datiModulo.email,
         password: datiModulo.password
       });

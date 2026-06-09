@@ -73,7 +73,7 @@ export default function LibreriaVideo() {
 
   const recuperaVideo = async () => {
     try {
-      const risposta = await axios.get('http://localhost:5001/api/videos');
+      const risposta = await axios.get('http://localhost:8000/api/videos');
       const ordinati = risposta.data.sort((a, b) => new Date(b.dataCaricamento) - new Date(a.dataCaricamento));
       setListaVideo(ordinati);
     } catch (errore) {

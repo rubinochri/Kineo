@@ -8,7 +8,6 @@ require('dotenv').config();           // Carica le variabili d'ambiente (es. pas
 // 2. IMPORTAZIONE DEI MODELLI (Schemi dei dati)
 const Video = require('./models/Video');      // Importa lo schema dei Video
 const Utente = require('./models/Utente');    // Importa lo schema degli Utenti
-const Dizionario = require('./models/Dizionario'); // Importa lo schema del Dizionario (Nota: usato solo in /translate)
 const Commento = require('./models/Commento'); // Importa lo schema dei Commenti
 
 // Inizializziamo l'applicazione Express
@@ -238,7 +237,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// --- UTENTI (Gestione Profilo & Dizionario Personale) ---
+// --- UTENTI (Gestione Profilo ) ---
 
 // GET: Ottieni dati profilo utente
 app.get('/api/user/:id', async (req, res) => {
@@ -313,82 +312,6 @@ app.delete('/api/user/:id', async (req, res) => {
   }
 });
 
-// GET: Recupera il dizionario personale (array dentro l'oggetto Utente)
-app.get('/api/user/:id/dizionario', async (req, res) => {
-  try {
-    const utenteTrovato = await Utente.findById(req.params.id);
-    if (!utenteTrovato) return res.status(404).json({ msg: "Utente non trovato" });
-    // Ordina le parole per data decrescente (dalla più recente)
-    const listaParole = utenteTrovato.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.json(listaParole);
-  } catch (errore) {
-    res.status(500).json({ msg: "Errore server" });
-  }
-});
-
-// POST: Aggiunge una parola al dizionario personale
-app.post('/api/user/:id/dizionario', async (req, res) => {
-  try {
-    const { original, translation, type, notes, learned } = req.body;
-    const utenteTrovato = await Utente.findById(req.params.id);
-    if (!utenteTrovato) return res.status(404).json({ msg: "Utente non trovato" });
-
-    // Verifica duplicati: controlla se la parola esiste già nell'array
-    const esisteGia = utenteTrovato.dizionario.find(w => w.original.toLowerCase() === original.toLowerCase());
-    if (esisteGia) return res.status(400).json({ msg: "Parola già presente" });
-
-    // Aggiunge la nuova parola all'array 'dizionario' dell'utente (operazione in memoria)
-    utenteTrovato.dizionario.push({ original, translation, type, notes: notes || '', learned: learned || false });
-    await utenteTrovato.save(); // Salva l'intero documento utente con il nuovo array
-
-    // Restituisce l'array aggiornato
-    const paroleAggiornate = utenteTrovato.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.json(paroleAggiornate);
-  } catch (errore) {
-    res.status(500).json({ msg: "Errore server" });
-  }
-});
-
-// DELETE: Rimuove una parola dal dizionario
-app.delete('/api/user/:id/dizionario/:wordId', async (req, res) => {
-  try {
-    const utenteTrovato = await Utente.findById(req.params.id);
-    if (!utenteTrovato) return res.status(404).json({ msg: "Utente non trovato" });
-    
-    // Metodo Mongoose per rimuovere un sotto-documento da un array tramite ID
-    utenteTrovato.dizionario.pull({ _id: req.params.wordId });
-    await utenteTrovato.save(); // Salva le modifiche
-    
-    const paroleAggiornate = utenteTrovato.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.json(paroleAggiornate);
-  } catch (errore) {
-    res.status(500).json({ msg: "Errore server" });
-  }
-});
-
-// PUT: Aggiorna stato parola (es. note o stato "imparato")
-app.put('/api/user/:id/dizionario/:wordId', async (req, res) => {
-    try {
-      const { notes, learned } = req.body;
-      const { wordId } = req.params;
-      const utenteTrovato = await Utente.findById(req.params.id);
-      if (!utenteTrovato) return res.status(404).json({ msg: "Utente non trovato" });
-  
-      // Trova il sotto-documento specifico nell'array
-      const parolaTrovata = utenteTrovato.dizionario.id(wordId);
-      if (!parolaTrovata) return res.status(404).json({ msg: "Parola non trovata" });
-  
-      // Aggiorna solo se i campi sono stati inviati
-      if (notes !== undefined) parolaTrovata.notes = notes;
-      if (learned !== undefined) parolaTrovata.learned = learned;
-  
-      await utenteTrovato.save(); // Salva l'utente
-      const paroleAggiornate = utenteTrovato.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
-      res.json(paroleAggiornate);
-    } catch (errore) {
-      res.status(500).json({ msg: "Errore server" });
-    }
-});
 
 // GET: Recupera tutti i commenti di un singolo utente
 app.get('/api/user/:id/commenti', async (req, res) => {
@@ -409,22 +332,6 @@ app.get('/api/user/:id/commenti', async (req, res) => {
 });
 
 // --- ALTRE ROTTE ---
-
-// POST: Traduzione semplice (usa il DB come dizionario statico)
-app.post('/api/translate', async (req, res) => {
-  try {
-    const { text } = req.body;
-    if (!text) return res.status(400).json({ message: "Testo mancante" });
-    const parolaPulita = text.trim().toLowerCase(); // Pulisce spazi e minuscole
-    
-    // Cerca nel modello 'Dizionario' (separato dagli utenti)
-    const voceDizionario = await Dizionario.findOne({ word: parolaPulita });
-    if (voceDizionario) res.json({ translation: voceDizionario.translation });
-    else res.json({ translation: "Traduzione non presente nel dizionario demo." });
-  } catch (errore) {
-    res.status(500).json({ message: "Errore dizionario." });
-  }
-});
 
 // GET: Recupera commenti di un video specifico
 app.get('/api/commenti/video/:videoId', async (req, res) => {

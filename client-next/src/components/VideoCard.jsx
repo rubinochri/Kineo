@@ -107,7 +107,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
     });
 
     try {
-      const res = await axios.post('http://localhost:5001/api/translate', { text: testo });
+      const res = await axios.post('http://localhost:8000/api/translate', { text: testo });
       setTooltip(prev => ({ ...prev, traduzione: res.data.translation }));
     } catch (err) {
       console.error("Errore traduzione:", err);
@@ -186,7 +186,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
   // --- LOGICA COMMENTI ---
   const caricaCommenti = async () => {
     try {
-      const res = await axios.get(`http://localhost:5001/api/commenti/video/${video._id}`);
+      const res = await axios.get(`http://localhost:8000/api/commenti/video/${video._id}`);
       setCommenti(res.data);
     } catch (err) {
       console.error("Errore recupero commenti:", err);
@@ -201,7 +201,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
       return;
     }
     try {
-        await axios.post('http://localhost:5001/api/commenti', {
+        await axios.post('http://localhost:8000/api/commenti', {
             videoId: video._id,
             utenteId: idUtenteCorrente,
             testo: nuovoCommento
@@ -227,7 +227,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
     const testo = (testoRisposta[idPadre] || '').trim();
     if (!testo) return;
     try {
-      await axios.post('http://localhost:5001/api/commenti', {
+      await axios.post('http://localhost:8000/api/commenti', {
         videoId: video._id,
         utenteId: idUtenteCorrente || 'guest_id',
         testo,
@@ -248,7 +248,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
   };
   const salvaModifica = async (id) => {
     try {
-      await axios.put(`http://localhost:5001/api/commenti/${id}`, {
+      await axios.put(`http://localhost:8000/api/commenti/${id}`, {
         utenteId: idUtenteCorrente || 'guest_id',
         testo: testoModifica
       });
@@ -260,14 +260,14 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
   const eliminaCommento = async (id) => {
     if (!confirm('Eliminare questo commento?')) return;
     try {
-      await axios.delete(`http://localhost:5001/api/commenti/${id}`, { data: { utenteId: idUtenteCorrente || 'guest_id' } });
+      await axios.delete(`http://localhost:8000/api/commenti/${id}`, { data: { utenteId: idUtenteCorrente || 'guest_id' } });
       caricaCommenti();
     } catch (err) { console.error('Errore eliminazione', err); }
   };
   const gestisciLikeCommento = async (idCommento) => {
     if (!idUtenteCorrente) { alert('Devi essere loggato per mettere like'); return; }
     try {
-      const res = await axios.put(`http://localhost:5001/api/commenti/${idCommento}/like`, { utenteId: idUtenteCorrente });
+      const res = await axios.put(`http://localhost:8000/api/commenti/${idCommento}/like`, { utenteId: idUtenteCorrente });
       setCommenti(prev => prev.map(comm => {
         if (comm._id === idCommento) return { ...comm, like: res.data.like };
         if (comm.risposte) {
