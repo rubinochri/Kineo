@@ -31,6 +31,17 @@ services:
           - /api/videos
         strip_path: false
 
+  - name: kineo-commenti
+    url: http://commenti:5006
+    routes:
+      - name: route-commenti
+        paths:
+          - /api/comments/all
+          - /api/admin/comments
+          - /api/commenti
+          - ~/api/user/.*/commenti
+        strip_path: false
+
   - name: kineo-monolith
     url: http://monolith:5001
     routes:
