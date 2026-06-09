@@ -32,43 +32,49 @@ export default function LibreriaVideo() {
             setUtente(utenteParsato);
             recuperaVideo();
             
-            // CARICAMENTO DIZIONARIO SPECIFICO PER UTENTE
-            // Usiamo una chiave unica: paroleSalvate_IDUTENTE
-            const paroleUtente = localStorage.getItem(`savedWords_${utenteParsato.id || utenteParsato._id}`);
-            if (paroleUtente) {
-                setParoleSalvate(JSON.parse(paroleUtente));
-            } else {
-                setParoleSalvate([]); // Resetta se cambia utente
-            }
+            // CARICAMENTO DIZIONARIO SPECIFICO PER UTENTE DA API
+            const idUtente = utenteParsato.id || utenteParsato._id;
+            axios.get(`http://localhost:8000/api/user/${idUtente}/dizionario`)
+                .then(res => {
+                    setParoleSalvate(res.data);
+                })
+                .catch(err => {
+                    console.error("Errore caricamento dizionario:", err);
+                    setParoleSalvate([]);
+                });
         }
     }
   }, [router]);
 
-  // 2. LOGICA SALVATAGGIO SPECIFICA PER UTENTE
-  const gestisciSalvataggioParola = (datiParola) => {
+  // 2. LOGICA SALVATAGGIO SPECIFICA PER UTENTE DA API
+  const gestisciSalvataggioParola = async (datiParola) => {
     if (!utente) return; // Sicurezza
 
+    const idUtente = utente.id || utente._id;
     const esiste = paroleSalvate.some(p => p.original.toLowerCase() === datiParola.original.toLowerCase());
     
-    let nuoveParole;
     if (esiste) {
-      nuoveParole = paroleSalvate.filter(p => p.original.toLowerCase() !== datiParola.original.toLowerCase());
+      const parolaTrovata = paroleSalvate.find(p => p.original.toLowerCase() === datiParola.original.toLowerCase());
+      if (parolaTrovata) {
+        try {
+          const res = await axios.delete(`http://localhost:8000/api/user/${idUtente}/dizionario/${parolaTrovata.id || parolaTrovata._id}`);
+          setParoleSalvate(res.data);
+        } catch (err) {
+          console.error("Errore rimozione parola:", err);
+        }
+      }
     } else {
-      const nuovaParola = {
-        id: Date.now(), 
-        original: datiParola.original,
-        translation: datiParola.translation,
-        type: datiParola.type || 'GENERIC',
-        notes: '',
-        learned: false,
-        dateAdded: new Date().toISOString()
-      };
-      nuoveParole = [...paroleSalvate, nuovaParola];
+      try {
+        const res = await axios.post(`http://localhost:8000/api/user/${idUtente}/dizionario`, {
+          original: datiParola.original,
+          translation: datiParola.translation,
+          type: datiParola.type || 'GENERIC'
+        });
+        setParoleSalvate(res.data);
+      } catch (err) {
+        console.error("Errore salvataggio parola:", err);
+      }
     }
-
-    setParoleSalvate(nuoveParole);
-    // SALVA CON CHIAVE DINAMICA
-    localStorage.setItem(`savedWords_${utente.id || utente._id}`, JSON.stringify(nuoveParole));
   };
 
   const recuperaVideo = async () => {

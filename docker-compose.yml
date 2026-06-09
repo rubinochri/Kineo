@@ -14,7 +14,7 @@ services:
     build: ./microservice-dizionario
     container_name: kineo_dizionario
     environment:
-      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_auth?retryWrites=true&w=majority&appName=Cluster0
+      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_dizionario?retryWrites=true&w=majority&appName=Cluster0
     networks:
       - kineo_net
 
