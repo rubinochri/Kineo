@@ -1,14 +1,6 @@
 version: '3.8'
 
 services:
-  monolith:
-    build: ./server
-    container_name: kineo_monolith
-    environment:
-      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0
-    networks:
-      - kineo_net
-
   auth:
     build: ./microservice-auth
     container_name: kineo_auth
@@ -94,7 +86,6 @@ services:
     networks:
       - kineo_net
     depends_on:
-      - monolith
       - auth
       - dizionario
       - catalogo

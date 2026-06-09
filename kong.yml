@@ -51,12 +51,3 @@ services:
           - /api/users
           - ~/api/user/[^/]+$
         strip_path: false
-
-
-  - name: kineo-monolith
-    url: http://monolith:5001
-    routes:
-      - name: route-monolith-fallback
-        paths:
-          - /api
-        strip_path: false
