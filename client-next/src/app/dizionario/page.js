@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
 import './DictionaryPage.css'; 
 
 // --- COMPONENTE SCHEDA ---
@@ -57,12 +58,11 @@ const Dizionario = () => {
   const [caricato, setCaricato] = useState(false);
   const [idUtenteCorrente, setIdUtenteCorrente] = useState(null);
 
-  // 1. CARICAMENTO DATI UTENTE E PAROLE
+  // 1. CARICAMENTO DATI UTENTE E PAROLE DA API
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const utenteStringa = localStorage.getItem('userData');
       if (!utenteStringa) {
-        // Se non c'è utente, rimanda al login o mostra vuoto
         router.push('/login');
         return;
       }
@@ -71,34 +71,38 @@ const Dizionario = () => {
       const idUtente = utente.id || utente._id;
       setIdUtenteCorrente(idUtente);
 
-      // Carica le parole SPECIFICHE dell'utente
-      // NOTA: Manteniamo la chiave 'savedWords_' in inglese per compatibilità con il Catalogo
-      const salvate = localStorage.getItem(`savedWords_${idUtente}`);
-      if (salvate) {
-        setParoleSalvate(JSON.parse(salvate));
-      }
-      setCaricato(true);
+      // Carica le parole SPECIFICHE dell'utente tramite API Gateway
+      axios.get(`http://localhost:8000/api/user/${idUtente}/dizionario`)
+        .then(res => {
+          setParoleSalvate(res.data);
+          setCaricato(true);
+        })
+        .catch(err => {
+          console.error("Errore caricamento dizionario:", err);
+          setCaricato(true);
+        });
     }
   }, [router]);
 
-  // 2. FUNZIONE PER SALVARE (Con ID Utente)
-  const aggiornaMemoria = (nuoveParole) => {
-    setParoleSalvate(nuoveParole);
-    if (idUtenteCorrente) {
-        localStorage.setItem(`savedWords_${idUtenteCorrente}`, JSON.stringify(nuoveParole));
-    }
-  };
-
-  const gestisciRimozioneParola = (id) => {
+  const gestisciRimozioneParola = async (id) => {
     if (window.confirm('Vuoi davvero eliminare questa parola?')) {
-      const nuoveParole = paroleSalvate.filter(p => p.id !== id);
-      aggiornaMemoria(nuoveParole);
+      try {
+        const res = await axios.delete(`http://localhost:8000/api/user/${idUtenteCorrente}/dizionario/${id}`);
+        setParoleSalvate(res.data);
+      } catch (err) {
+        console.error("Errore rimozione parola:", err);
+        alert("Errore durante l'eliminazione della parola.");
+      }
     }
   };
 
-  const gestisciAggiornamentoParola = (id, modifiche) => {
-    const nuoveParole = paroleSalvate.map(p => p.id === id ? { ...p, ...modifiche } : p);
-    aggiornaMemoria(nuoveParole);
+  const gestisciAggiornamentoParola = async (id, modifiche) => {
+    try {
+      const res = await axios.put(`http://localhost:8000/api/user/${idUtenteCorrente}/dizionario/${id}`, modifiche);
+      setParoleSalvate(res.data);
+    } catch (err) {
+      console.error("Errore aggiornamento parola:", err);
+    }
   };
 
   const paroleFiltrate = paroleSalvate.filter(parola => {

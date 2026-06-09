@@ -1,20 +1,47 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+require('dotenv').config();
 
-const Utente = require('./models/Utente');
+const SavedWord = require('./models/SavedWord');
 const Dizionario = require('./models/Dizionario');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGODB_URI)
+const mongoUri = process.env.MONGODB_URI;
+const maskedUri = mongoUri ? mongoUri.replace(/:([^@]+)@/, ':******@') : 'undefined';
+console.log(`[DIZIONARIO] Tentativo di connessione a MongoDB: ${maskedUri}`);
+
+mongoose.connect(mongoUri)
   .then(() => console.log('MongoDB Connesso - Microservizio Dizionario'))
-  .catch(err => console.error('Errore DB:', err));
+  .catch(err => console.error('Errore DB Dizionario:', err));
 
-// --- ROTTE ESTRATTE DAL MONOLITE ---
+// Helper function to map flat database schema to the expected frontend/monolith keys
+function mapSavedWord(word) {
+  const obj = word.toObject ? word.toObject() : word;
+  return {
+    _id: obj._id,
+    userId: obj.userId,
+    originale: obj.originale,
+    traduzione: obj.traduzione,
+    lingua: obj.lingua,
+    dataCreazione: obj.dataCreazione,
+    notes: obj.notes,
+    learned: obj.learned,
+    // Legacy fields for backward compatibility with the frontend client
+    id: obj._id,
+    original: obj.originale,
+    translation: obj.traduzione,
+    type: obj.lingua,
+    date: obj.dataCreazione
+  };
+}
 
+// --- ROTTE DI DIZIONARIO ---
+
+// POST: Traduci una parola (Demo)
 app.post('/api/translate', async (req, res) => {
   try {
     const { text } = req.body;
@@ -29,70 +56,107 @@ app.post('/api/translate', async (req, res) => {
   }
 });
 
+// GET: Recupera tutte le parole salvate da un utente specifico
 app.get('/api/user/:id/dizionario', async (req, res) => {
   try {
-    const utenteTrovato = await Utente.findById(req.params.id);
-    if (!utenteTrovato) return res.status(404).json({ msg: "Utente non trovato" });
-    const listaParole = utenteTrovato.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.json(listaParole);
+    const { id } = req.params;
+    const listaParole = await SavedWord.find({ userId: id }).sort({ dataCreazione: -1 });
+    res.json(listaParole.map(mapSavedWord));
   } catch (errore) {
+    console.error("Errore recupero dizionario:", errore);
     res.status(500).json({ msg: "Errore server" });
   }
 });
 
+// POST: Aggiungi una parola al dizionario personale dell'utente
 app.post('/api/user/:id/dizionario', async (req, res) => {
   try {
-    const { original, translation, type, notes, learned } = req.body;
-    const utenteTrovato = await Utente.findById(req.params.id);
-    if (!utenteTrovato) return res.status(404).json({ msg: "Utente non trovato" });
+    const { id } = req.params;
+    const { original, translation, type, notes, learned, originale, traduzione, lingua } = req.body;
 
-    const esisteGia = utenteTrovato.dizionario.find(w => w.original.toLowerCase() === original.toLowerCase());
+    const wordOriginale = originale || original;
+    const wordTraduzione = traduzione || translation;
+    const wordLingua = lingua || type || 'Generic';
+
+    if (!wordOriginale || !wordTraduzione) {
+      return res.status(400).json({ msg: "Campi obbligatori mancanti." });
+    }
+
+    const cleanedOriginale = wordOriginale.trim();
+
+    // Check if the word is already saved by this user
+    const esisteGia = await SavedWord.findOne({
+      userId: id,
+      originale: { $regex: new RegExp(`^${cleanedOriginale}$`, 'i') }
+    });
     if (esisteGia) return res.status(400).json({ msg: "Parola già presente" });
 
-    utenteTrovato.dizionario.push({ original, translation, type, notes: notes || '', learned: learned || false });
-    await utenteTrovato.save();
+    const nuovaParola = new SavedWord({
+      userId: id,
+      originale: cleanedOriginale,
+      traduzione: wordTraduzione.trim(),
+      lingua: wordLingua,
+      notes: notes || '',
+      learned: learned || false
+    });
 
-    const paroleAggiornate = utenteTrovato.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.json(paroleAggiornate);
+    await nuovaParola.save();
+
+    const paroleAggiornate = await SavedWord.find({ userId: id }).sort({ dataCreazione: -1 });
+    res.json(paroleAggiornate.map(mapSavedWord));
   } catch (errore) {
+    console.error("Errore salvataggio parola:", errore);
     res.status(500).json({ msg: "Errore server" });
   }
 });
 
+// DELETE: Elimina una parola dal dizionario personale
 app.delete('/api/user/:id/dizionario/:wordId', async (req, res) => {
   try {
-    const utenteTrovato = await Utente.findById(req.params.id);
-    if (!utenteTrovato) return res.status(404).json({ msg: "Utente non trovato" });
+    const { id, wordId } = req.params;
     
-    utenteTrovato.dizionario.pull({ _id: req.params.wordId });
-    await utenteTrovato.save(); 
-    
-    const paroleAggiornate = utenteTrovato.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.json(paroleAggiornate);
+    const parolaEliminata = await SavedWord.findOneAndDelete({ _id: wordId, userId: id });
+    if (!parolaEliminata) {
+      return res.status(404).json({ msg: "Parola non trovata per questo utente." });
+    }
+
+    const paroleAggiornate = await SavedWord.find({ userId: id }).sort({ dataCreazione: -1 });
+    res.json(paroleAggiornate.map(mapSavedWord));
   } catch (errore) {
+    console.error("Errore eliminazione parola:", errore);
     res.status(500).json({ msg: "Errore server" });
   }
 });
 
+// PUT: Modifica note o stato di apprendimento di una parola
 app.put('/api/user/:id/dizionario/:wordId', async (req, res) => {
-    try {
-      const { notes, learned } = req.body;
-      const { wordId } = req.params;
-      const utenteTrovato = await Utente.findById(req.params.id);
-      if (!utenteTrovato) return res.status(404).json({ msg: "Utente non trovato" });
-  
-      const parolaTrovata = utenteTrovato.dizionario.id(wordId);
-      if (!parolaTrovata) return res.status(404).json({ msg: "Parola non trovata" });
-  
-      if (notes !== undefined) parolaTrovata.notes = notes;
-      if (learned !== undefined) parolaTrovata.learned = learned;
-  
-      await utenteTrovato.save();
-      const paroleAggiornate = utenteTrovato.dizionario.sort((a, b) => new Date(b.date) - new Date(a.date));
-      res.json(paroleAggiornate);
-    } catch (errore) {
-      res.status(500).json({ msg: "Errore server" });
+  try {
+    const { id, wordId } = req.params;
+    const { notes, learned, originale, traduzione, lingua } = req.body;
+
+    const updates = {};
+    if (notes !== undefined) updates.notes = notes;
+    if (learned !== undefined) updates.learned = learned;
+    if (originale !== undefined) updates.originale = originale;
+    if (traduzione !== undefined) updates.traduzione = traduzione;
+    if (lingua !== undefined) updates.lingua = lingua;
+
+    const parolaAggiornata = await SavedWord.findOneAndUpdate(
+      { _id: wordId, userId: id },
+      { $set: updates },
+      { new: true }
+    );
+
+    if (!parolaAggiornata) {
+      return res.status(404).json({ msg: "Parola non trovata per questo utente." });
     }
+
+    const paroleAggiornate = await SavedWord.find({ userId: id }).sort({ dataCreazione: -1 });
+    res.json(paroleAggiornate.map(mapSavedWord));
+  } catch (errore) {
+    console.error("Errore modifica parola:", errore);
+    res.status(500).json({ msg: "Errore server" });
+  }
 });
 
 const PORTA = process.env.PORT || 5002;
