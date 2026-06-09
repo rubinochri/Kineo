@@ -8,7 +8,6 @@ require('dotenv').config();
 // 2. IMPORTAZIONE DEI MODELLI (Schemi dei dati)
 const Video = require('./models/Video');      
 const Utente = require('./models/Utente');    
-const Commento = require('./models/Commento'); 
 
 // Inizializziamo l'applicazione Express
 const app = express();
@@ -37,27 +36,6 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-app.get('/api/comments/all', async (req, res) => {
-  try {
-    const commenti = await Commento.find()
-      .populate('utenteId', 'username email') 
-      .populate('videoId', 'titolo')          
-      .sort({ dataCreazione: -1 });           
-    res.json(commenti);
-  } catch (errore) {
-    res.status(500).json({ msg: "Errore server" });
-  }
-});
-
-app.delete('/api/admin/comments/:id', async (req, res) => {
-  try {
-    await Commento.findByIdAndDelete(req.params.id); 
-    await Commento.deleteMany({ parentCommentoId: req.params.id });
-    res.json({ msg: "Commento eliminato dall'admin." });
-  } catch (errore) {
-    res.status(500).json({ msg: "Errore eliminazione." });
-  }
-});
 
 
 // --- AUTENTICAZIONE (Login e Registrazione) ---
@@ -181,7 +159,6 @@ app.delete('/api/user/:id', async (req, res) => {
     const utenteDaEliminare = await Utente.findById(idUtente);
     if (!utenteDaEliminare) return res.status(404).json({ msg: "Utente non trovato." });
 
-    await Commento.deleteMany({ utenteId: idUtente });
     await Utente.findByIdAndDelete(idUtente);
     res.json({ msg: "Profilo eliminato." });
   } catch (errore) {
@@ -190,116 +167,6 @@ app.delete('/api/user/:id', async (req, res) => {
 });
 
 
-app.get('/api/user/:id/commenti', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const commenti = await Commento.find({ utenteId: id })
-      .populate('videoId', 'titolo') 
-      .sort({ dataCreazione: -1 }); 
-
-    res.json(commenti);
-  } catch (errore) {
-    console.error("Errore fetch commenti utente:", errore);
-    res.status(500).json({ msg: 'Errore server nel recupero commenti' });
-  }
-});
-
-// --- ALTRE ROTTE ---
-
-app.get('/api/commenti/video/:videoId', async (req, res) => {
-  try {
-    const commentiPrincipali = await Commento.find({ videoId: req.params.videoId, parentCommentoId: null })
-      .populate('utenteId', 'nome username') 
-      .populate('like', '_id') 
-      .sort({ dataCreazione: -1 });
-    
-    const commentiConRisposte = await Promise.all(
-      commentiPrincipali.map(async (commento) => {
-        const risposte = await Commento.find({ parentCommentoId: commento._id })
-          .populate('utenteId', 'nome username')
-          .populate('like', '_id')
-          .sort({ dataCreazione: 1 }); 
-        return { ...commento.toObject(), risposte: risposte }; 
-      })
-    );
-    res.json(commentiConRisposte);
-  } catch (errore) {
-    res.status(500).json({ message: "Errore caricamento commenti." });
-  }
-});
-
-app.post('/api/commenti', async (req, res) => {
-  try {
-    const { utenteId, videoId, testo, parentCommentoId } = req.body;
-    if (!utenteId || !videoId || !testo) return res.status(400).json({ message: "Dati mancanti." });
-
-    const nuovoCommento = new Commento({
-      utenteId, videoId, testo: testo.trim(), parentCommentoId: parentCommentoId || null, like: []
-    });
-    await nuovoCommento.save();
-    const commentoCompleto = await Commento.findById(nuovoCommento._id).populate('utenteId', 'nome username');
-    res.status(201).json(commentoCompleto);
-  } catch (errore) {
-    res.status(400).json({ message: errore.message });
-  }
-});
-
-app.put('/api/commenti/:id', async (req, res) => {
-  try {
-    const { utenteId, testo } = req.body;
-    if (!utenteId || testo === undefined) return res.status(400).json({ message: "Dati mancanti." });
-
-    const commentoTrovato = await Commento.findById(req.params.id);
-    if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
-    
-    if (commentoTrovato.utenteId.toString() !== utenteId) return res.status(403).json({ message: "Non autorizzato." });
-
-    commentoTrovato.testo = testo.trim();
-    const commentoAggiornato = await commentoTrovato.save();
-    await commentoAggiornato.populate('utenteId', 'nome username'); 
-    res.json(commentoAggiornato);
-  } catch (errore) {
-    res.status(400).json({ message: errore.message });
-  }
-});
-
-app.put('/api/commenti/:id/like', async (req, res) => {
-  try {
-    const { utenteId } = req.body;
-    if (!utenteId) return res.status(400).json({ message: "Utente mancante." });
-    const commentoTrovato = await Commento.findById(req.params.id);
-    if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
-
-    const indiceMiPiace = commentoTrovato.like.indexOf(utenteId);
-    if (indiceMiPiace === -1) commentoTrovato.like.push(utenteId); 
-    else commentoTrovato.like.splice(indiceMiPiace, 1); 
-
-    const commentoAggiornato = await commentoTrovato.save();
-    await commentoAggiornato.populate('utenteId', 'nome username');
-    await commentoAggiornato.populate('like', '_id');
-    res.json(commentoAggiornato);
-  } catch (errore) {
-    res.status(400).json({ message: errore.message });
-  }
-});
-
-app.delete('/api/commenti/:id', async (req, res) => {
-  try {
-    const { utenteId } = req.body;
-    if (!utenteId) return res.status(400).json({ message: "Utente mancante." });
-    const commentoTrovato = await Commento.findById(req.params.id);
-    if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
-    
-    if (commentoTrovato.utenteId.toString() !== utenteId) return res.status(403).json({ message: "Non autorizzato." });
-
-    await Commento.deleteMany({ parentCommentoId: commentoTrovato._id });
-    await commentoTrovato.deleteOne();
-    res.json({ message: "Commento eliminato." });
-  } catch (errore) {
-    res.status(400).json({ message: errore.message });
-  }
-});
 
 // 6. AVVIO DEL SERVER
 const PORTA = process.env.PORT || 5001; 
