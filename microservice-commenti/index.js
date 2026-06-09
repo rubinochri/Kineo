@@ -1,12 +1,48 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const axios = require('axios');
 require('dotenv').config();
 
 const Commento = require('./models/Commento');
 const Utente = require('./models/Utente');
 const Video = require('./models/Video');
 const { connectRabbitMQ } = require('./rabbitmq');
+
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://user:5007';
+
+async function fetchUserProfiles(userIds) {
+  if (!userIds || userIds.length === 0) return {};
+  
+  const uniqueIds = [...new Set(userIds.map(id => id ? id.toString() : null).filter(Boolean))];
+  const profiles = {};
+  
+  await Promise.all(
+    uniqueIds.map(async (id) => {
+      try {
+        const response = await axios.get(`${USER_SERVICE_URL}/api/user/${id}`);
+        profiles[id] = {
+          _id: response.data.id || id,
+          id: response.data.id || id,
+          nome: response.data.nome || 'Utente',
+          username: response.data.username || 'Utente',
+          email: response.data.email || ''
+        };
+      } catch (err) {
+        console.error(`[API-COMPOSITION] Errore nel recupero profilo per utente ${id}:`, err.message);
+        profiles[id] = {
+          _id: id,
+          id: id,
+          nome: 'Utente',
+          username: 'Utente',
+          email: ''
+        };
+      }
+    })
+  );
+  
+  return profiles;
+}
 
 const app = express();
 app.use(cors());
@@ -30,10 +66,20 @@ mongoose.connect(process.env.MONGODB_URI)
 app.get('/api/comments/all', async (req, res) => {
   try {
     const commenti = await Commento.find()
-      .populate('utenteId', 'username email') 
       .populate('videoId', 'titolo')          
       .sort({ dataCreazione: -1 });           
-    res.json(commenti);
+
+    const userIds = commenti.map(c => c.utenteId).filter(Boolean);
+    const profiles = await fetchUserProfiles(userIds);
+
+    const mappedCommenti = commenti.map(c => {
+      const cObj = c.toObject();
+      const uId = cObj.utenteId ? cObj.utenteId.toString() : '';
+      cObj.utenteId = profiles[uId] || { _id: cObj.utenteId, id: cObj.utenteId, username: 'Utente', email: '' };
+      return cObj;
+    });
+
+    res.json(mappedCommenti);
   } catch (errore) {
     console.error("Errore fetch all comments (admin):", errore);
     res.status(500).json({ msg: "Errore server" });
@@ -74,20 +120,45 @@ app.get('/api/user/:id/commenti', async (req, res) => {
 app.get('/api/commenti/video/:videoId', async (req, res) => {
   try {
     const commentiPrincipali = await Commento.find({ videoId: req.params.videoId, parentCommentoId: null })
-      .populate('utenteId', 'nome username') 
       .populate('like', '_id') 
       .sort({ dataCreazione: -1 });
     
     const commentiConRisposte = await Promise.all(
       commentiPrincipali.map(async (commento) => {
         const risposte = await Commento.find({ parentCommentoId: commento._id })
-          .populate('utenteId', 'nome username')
           .populate('like', '_id')
           .sort({ dataCreazione: 1 }); 
-        return { ...commento.toObject(), risposte: risposte }; 
+        return { ...commento.toObject(), risposte: risposte.map(r => r.toObject()) }; 
       })
     );
-    res.json(commentiConRisposte);
+
+    const userIds = [];
+    commentiConRisposte.forEach(c => {
+      if (c.utenteId) userIds.push(c.utenteId);
+      if (c.risposte) {
+        c.risposte.forEach(r => {
+          if (r.utenteId) userIds.push(r.utenteId);
+        });
+      }
+    });
+
+    const profiles = await fetchUserProfiles(userIds);
+
+    const commentiComposti = commentiConRisposte.map(c => {
+      const uId = c.utenteId ? c.utenteId.toString() : '';
+      c.utenteId = profiles[uId] || { _id: c.utenteId, id: c.utenteId, nome: 'Utente', username: 'Utente' };
+      
+      if (c.risposte) {
+        c.risposte = c.risposte.map(r => {
+          const ruId = r.utenteId ? r.utenteId.toString() : '';
+          r.utenteId = profiles[ruId] || { _id: r.utenteId, id: r.utenteId, nome: 'Utente', username: 'Utente' };
+          return r;
+        });
+      }
+      return c;
+    });
+
+    res.json(commentiComposti);
   } catch (errore) {
     console.error("Errore caricamento commenti video:", errore);
     res.status(500).json({ message: "Errore caricamento commenti." });
@@ -110,8 +181,12 @@ app.post('/api/commenti', async (req, res) => {
       like: []
     });
     await nuovoCommento.save();
-    const commentoCompleto = await Commento.findById(nuovoCommento._id).populate('utenteId', 'nome username');
-    res.status(201).json(commentoCompleto);
+    const commentoCompleto = await Commento.findById(nuovoCommento._id);
+    const commentoCompletoObj = commentoCompleto.toObject();
+    const profiles = await fetchUserProfiles([commentoCompletoObj.utenteId]);
+    const uId = commentoCompletoObj.utenteId ? commentoCompletoObj.utenteId.toString() : '';
+    commentoCompletoObj.utenteId = profiles[uId] || { _id: commentoCompletoObj.utenteId, id: commentoCompletoObj.utenteId, nome: 'Utente', username: 'Utente' };
+    res.status(201).json(commentoCompletoObj);
   } catch (errore) {
     console.error("Errore creazione commento:", errore);
     res.status(400).json({ message: errore.message });
@@ -131,8 +206,11 @@ app.put('/api/commenti/:id', async (req, res) => {
 
     commentoTrovato.testo = testo.trim();
     const commentoAggiornato = await commentoTrovato.save();
-    await commentoAggiornato.populate('utenteId', 'nome username'); 
-    res.json(commentoAggiornato);
+    const commentoAggiornatoObj = commentoAggiornato.toObject();
+    const profiles = await fetchUserProfiles([commentoAggiornatoObj.utenteId]);
+    const uId = commentoAggiornatoObj.utenteId ? commentoAggiornatoObj.utenteId.toString() : '';
+    commentoAggiornatoObj.utenteId = profiles[uId] || { _id: commentoAggiornatoObj.utenteId, id: commentoAggiornatoObj.utenteId, nome: 'Utente', username: 'Utente' };
+    res.json(commentoAggiornatoObj);
   } catch (errore) {
     console.error("Errore modifica commento:", errore);
     res.status(400).json({ message: errore.message });
@@ -152,9 +230,12 @@ app.put('/api/commenti/:id/like', async (req, res) => {
     else commentoTrovato.like.splice(indiceMiPiace, 1); 
 
     const commentoAggiornato = await commentoTrovato.save();
-    await commentoAggiornato.populate('utenteId', 'nome username');
     await commentoAggiornato.populate('like', '_id');
-    res.json(commentoAggiornato);
+    const commentoAggiornatoObj = commentoAggiornato.toObject();
+    const profiles = await fetchUserProfiles([commentoAggiornatoObj.utenteId]);
+    const uId = commentoAggiornatoObj.utenteId ? commentoAggiornatoObj.utenteId.toString() : '';
+    commentoAggiornatoObj.utenteId = profiles[uId] || { _id: commentoAggiornatoObj.utenteId, id: commentoAggiornatoObj.utenteId, nome: 'Utente', username: 'Utente' };
+    res.json(commentoAggiornatoObj);
   } catch (errore) {
     console.error("Errore like commento:", errore);
     res.status(400).json({ message: errore.message });
