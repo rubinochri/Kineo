@@ -5,7 +5,7 @@ services:
     build: ./microservice-auth
     container_name: kineo_auth
     environment:
-      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0
+      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_auth?retryWrites=true&w=majority&appName=Cluster0
       - RABBITMQ_URL=amqp://rabbitmq:5672
     networks:
       - kineo_net
@@ -14,7 +14,7 @@ services:
     build: ./microservice-dizionario
     container_name: kineo_dizionario
     environment:
-      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0
+      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_auth?retryWrites=true&w=majority&appName=Cluster0
     networks:
       - kineo_net
 
@@ -22,7 +22,7 @@ services:
     build: ./microservice-catalogo
     container_name: kineo_catalogo
     environment:
-      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0
+      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_catalogo?retryWrites=true&w=majority&appName=Cluster0
     networks:
       - kineo_net
 
@@ -30,11 +30,10 @@ services:
     build: ./microservice-commenti
     container_name: kineo_commenti
     environment:
-      - MONGODB_URI=mongodb://mongo-commenti:27017/kineo_commenti
+      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_commenti?retryWrites=true&w=majority&appName=Cluster0
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on:
       - rabbitmq
-      - mongo-commenti
     networks:
       - kineo_net
 
@@ -47,19 +46,11 @@ services:
     networks:
       - kineo_net
 
-  mongo-commenti:
-    image: mongo
-    container_name: mongo_commenti
-    volumes:
-      - mongo_commenti_data:/data/db
-    networks:
-      - kineo_net
-
   user:
     build: ./microservice-user
     container_name: kineo_user
     environment:
-      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0
+      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_auth?retryWrites=true&w=majority&appName=Cluster0
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on:
       - rabbitmq
@@ -97,6 +88,3 @@ services:
 networks:
   kineo_net:
     driver: bridge
-
-volumes:
-  mongo_commenti_data:
