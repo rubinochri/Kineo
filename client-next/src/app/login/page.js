@@ -34,7 +34,7 @@ export default function Login() {
 
       setTimeout(() => {
         if (datiUtente.ruolo === 'admin') {
-          router.push('/admin'); 
+          window.location.href = '/admin'; 
         } else {
           router.push('/catalogo'); 
         }
