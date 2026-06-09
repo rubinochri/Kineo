@@ -1,26 +1,26 @@
 // 1. IMPORTAZIONE DELLE LIBRERIE
-const express = require('express');   // Importa il framework Express per gestire server e rotte API
-const mongoose = require('mongoose'); // Importa Mongoose per interagire con il database MongoDB
-const cors = require('cors');         // Importa CORS per permettere al Frontend (React) di chiamare questo Backend
-const bcrypt = require('bcryptjs');   // Importa Bcrypt per criptare (hashare) le password degli utenti
-require('dotenv').config();           // Carica le variabili d'ambiente (es. password DB) dal file .env
+const express = require('express');   
+const mongoose = require('mongoose'); 
+const cors = require('cors');
+const bcrypt = require('bcryptjs'); // REINSERITO: Necessario per hash password
+require('dotenv').config();           
 
 // 2. IMPORTAZIONE DEI MODELLI (Schemi dei dati)
-const Video = require('./models/Video');      // Importa lo schema dei Video
-const Utente = require('./models/Utente');    // Importa lo schema degli Utenti
-const Commento = require('./models/Commento'); // Importa lo schema dei Commenti
+const Video = require('./models/Video');      
+const Utente = require('./models/Utente');    
+const Commento = require('./models/Commento'); 
 
 // Inizializziamo l'applicazione Express
 const app = express();
 
-// 3. MIDDLEWARE (Funzioni eseguite prima di arrivare alle rotte)
-app.use(cors());          // Abilita le richieste da domini diversi (es. localhost:5173 chiama localhost:5001)
-app.use(express.json());  // Permette al server di leggere i dati JSON inviati nel "body" delle richieste POST/PUT
+// 3. MIDDLEWARE
+app.use(cors());          
+app.use(express.json());  
 
 // 4. CONNESSIONE AL DATABASE MONGODB
-mongoose.connect(process.env.MONGODB_URI) // Si connette all'indirizzo del DB salvato nel file .env
-  .then(() => console.log('MongoDB Connesso')) // Se ha successo, stampa conferma in console
-  .catch(errore => console.error('Errore connessione DB:', errore)); // Se fallisce, stampa l'errore
+mongoose.connect(process.env.MONGODB_URI) 
+  .then(() => console.log('MongoDB Connesso')) 
+  .catch(errore => console.error('Errore connessione DB:', errore)); 
 
 // ---------------------------------------------------------
 // 5. API ROUTES (Punti di accesso per il Frontend)
@@ -28,35 +28,30 @@ mongoose.connect(process.env.MONGODB_URI) // Si connette all'indirizzo del DB sa
 
 // --- ADMIN DASHBOARD ROUTES ---
 
-// GET: Lista di TUTTI gli utenti (per pannello Admin)
 app.get('/api/users', async (req, res) => {
   try {
-    // Trova tutti, esclude il campo 'password' per sicurezza, ordina per i più recenti
-    const listaUtenti = await Utente.find().select('-password').sort({ dataRegistrazione: -1 }); //con -1 indichiamo l'ordine decrescente
+    const listaUtenti = await Utente.find().select('-password').sort({ dataRegistrazione: -1 }); 
     res.json(listaUtenti);
   } catch (errore) {
     res.status(500).json({ msg: "Errore server" });
   }
 });
 
-// GET: Lista di TUTTI i commenti globali (per moderazione Admin)
 app.get('/api/comments/all', async (req, res) => {
   try {
     const commenti = await Commento.find()
-      .populate('utenteId', 'username email') // Sostituisce l'ID utente con i dati reali (username/email)
-      .populate('videoId', 'titolo')          // Sostituisce l'ID video con il titolo del video
-      .sort({ dataCreazione: -1 });           // Ordina dal più recente
+      .populate('utenteId', 'username email') 
+      .populate('videoId', 'titolo')          
+      .sort({ dataCreazione: -1 });           
     res.json(commenti);
   } catch (errore) {
     res.status(500).json({ msg: "Errore server" });
   }
 });
 
-// DELETE: L'Admin forza l'eliminazione di un commento
 app.delete('/api/admin/comments/:id', async (req, res) => {
   try {
-    await Commento.findByIdAndDelete(req.params.id); // Elimina il commento target
-    // Elimina a cascata anche tutte le risposte collegate a quel commento
+    await Commento.findByIdAndDelete(req.params.id); 
     await Commento.deleteMany({ parentCommentoId: req.params.id });
     res.json({ msg: "Commento eliminato dall'admin." });
   } catch (errore) {
@@ -64,9 +59,10 @@ app.delete('/api/admin/comments/:id', async (req, res) => {
   }
 });
 
-// --- AUTH ROUTES (Autenticazione) ---
 
-// POST: Registrazione nuovo utente
+// --- AUTENTICAZIONE (Login e Registrazione) ---
+
+// REINSERITO: Intestazione rotta di registrazione mancante
 app.post('/api/register', async (req, res) => {
   try {
     const { nome, cognome, username, email, password } = req.body;
@@ -81,15 +77,15 @@ app.post('/api/register', async (req, res) => {
     if (utenteEsistente) return res.status(400).json({ msg: "Email già registrata." });
 
     // Criptazione password
-    const saltGenerato = await bcrypt.genSalt(10); // Genera una stringa casuale "salt"
-    const passwordHash = await bcrypt.hash(password, saltGenerato); // Crea l'hash combinando psw + salt
+    const saltGenerato = await bcrypt.genSalt(10); 
+    const passwordHash = await bcrypt.hash(password, saltGenerato); 
 
-    // Crea l'oggetto utente (nota: salva l'hash, NON la password in chiaro)
+    // Crea l'oggetto utente
     const nuovoUtente = new Utente({
       nome, cognome, username, email, password: passwordHash 
     });
 
-    await nuovoUtente.save(); // Salva nel DB
+    await nuovoUtente.save(); 
     res.status(201).json({ msg: "Registrazione completata con successo!" });
   } catch (errore) {
     console.error("Errore server:", errore);
@@ -104,15 +100,12 @@ app.post('/api/login', async (req, res) => {
 
     if (!email || !password) return res.status(400).json({ msg: "Inserisci email e password." });
 
-    // Cerca l'utente per email
     const utenteTrovato = await Utente.findOne({ email });
-    if (!utenteTrovato) return res.status(400).json({ msg: "Credenziali non valide." }); // Email non trovata
+    if (!utenteTrovato) return res.status(400).json({ msg: "Credenziali non valide." }); 
 
-    // Confronta la password inviata con l'hash salvato nel DB
     const passwordCorrisponde = await bcrypt.compare(password, utenteTrovato.password);
-    if (!passwordCorrisponde) return res.status(400).json({ msg: "Credenziali non valide." }); // Password errata
+    if (!passwordCorrisponde) return res.status(400).json({ msg: "Credenziali non valide." }); 
 
-    // Login OK: Invia i dati utente al frontend (senza token JWT in questo codice base)
     res.json({
       msg: "Login effettuato con successo!",
       user: {
@@ -131,13 +124,11 @@ app.post('/api/login', async (req, res) => {
 
 // --- UTENTI (Gestione Profilo ) ---
 
-// GET: Ottieni dati profilo utente
 app.get('/api/user/:id', async (req, res) => {
   try {
     const utenteTrovato = await Utente.findById(req.params.id);
     if (!utenteTrovato) return res.status(404).json({ msg: "Utente non trovato." });
 
-    // Restituisce solo i dati pubblici (evita password e version keys)
     res.json({
       id: utenteTrovato._id,
       nome: utenteTrovato.nome,
@@ -152,13 +143,11 @@ app.get('/api/user/:id', async (req, res) => {
   }
 });
 
-// PUT: Aggiorna dati profilo
 app.put('/api/user/:id', async (req, res) => {
   try {
     const { nome, cognome, username, email } = req.body;
     if (!nome || !cognome || !username || !email) return res.status(400).json({ msg: "Campi obbligatori." });
 
-    // Controlla se la nuova email è già usata da qualcun altro ($ne: not equal to current ID)
     const emailEsistente = await Utente.findOne({ email: email, _id: { $ne: req.params.id } });
     if (emailEsistente) return res.status(400).json({ msg: "Email già in uso." });
 
@@ -175,7 +164,6 @@ app.put('/api/user/:id', async (req, res) => {
       user: {
         id: utenteAggiornato._id,
         nome: utenteAggiornato.nome,
-        // ...altri campi aggiornati inviati al client
         cognome: utenteAggiornato.cognome,
         username: utenteAggiornato.username,
         email: utenteAggiornato.email,
@@ -187,16 +175,13 @@ app.put('/api/user/:id', async (req, res) => {
   }
 });
 
-// DELETE: Elimina il proprio account
 app.delete('/api/user/:id', async (req, res) => {
   try {
     const idUtente = req.params.id;
     const utenteDaEliminare = await Utente.findById(idUtente);
     if (!utenteDaEliminare) return res.status(404).json({ msg: "Utente non trovato." });
 
-    // Pulizia: elimina prima tutti i commenti scritti da questo utente
     await Commento.deleteMany({ utenteId: idUtente });
-    // Poi elimina l'utente
     await Utente.findByIdAndDelete(idUtente);
     res.json({ msg: "Profilo eliminato." });
   } catch (errore) {
@@ -205,16 +190,13 @@ app.delete('/api/user/:id', async (req, res) => {
 });
 
 
-// GET: Recupera tutti i commenti di un singolo utente
 app.get('/api/user/:id/commenti', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Cerca i commenti scritti da questo utente
-    // .populate('videoId', 'titolo') serve per mostrare "Video: Titolo Del Video" nel frontend
     const commenti = await Commento.find({ utenteId: id })
       .populate('videoId', 'titolo') 
-      .sort({ dataCreazione: -1 }); // Ordina dal più recente
+      .sort({ dataCreazione: -1 }); 
 
     res.json(commenti);
   } catch (errore) {
@@ -225,23 +207,20 @@ app.get('/api/user/:id/commenti', async (req, res) => {
 
 // --- ALTRE ROTTE ---
 
-// GET: Recupera commenti di un video specifico
 app.get('/api/commenti/video/:videoId', async (req, res) => {
   try {
-    // 1. Trova i commenti "Principali" (quelli senza genitore/parent)
     const commentiPrincipali = await Commento.find({ videoId: req.params.videoId, parentCommentoId: null })
-      .populate('utenteId', 'nome username') // Espande l'ID utente nei dati reali
-      .populate('like', '_id') // Espande i like
+      .populate('utenteId', 'nome username') 
+      .populate('like', '_id') 
       .sort({ dataCreazione: -1 });
     
-    // 2. Per ogni commento principale, cerca le risposte (Nested comments)
     const commentiConRisposte = await Promise.all(
       commentiPrincipali.map(async (commento) => {
         const risposte = await Commento.find({ parentCommentoId: commento._id })
           .populate('utenteId', 'nome username')
           .populate('like', '_id')
-          .sort({ dataCreazione: 1 }); // Ordine cronologico per le risposte
-        return { ...commento.toObject(), risposte: risposte }; // Unisce commento + array risposte
+          .sort({ dataCreazione: 1 }); 
+        return { ...commento.toObject(), risposte: risposte }; 
       })
     );
     res.json(commentiConRisposte);
@@ -250,7 +229,6 @@ app.get('/api/commenti/video/:videoId', async (req, res) => {
   }
 });
 
-// POST: Aggiungi un nuovo commento
 app.post('/api/commenti', async (req, res) => {
   try {
     const { utenteId, videoId, testo, parentCommentoId } = req.body;
@@ -260,7 +238,6 @@ app.post('/api/commenti', async (req, res) => {
       utenteId, videoId, testo: testo.trim(), parentCommentoId: parentCommentoId || null, like: []
     });
     await nuovoCommento.save();
-    // Recupera il commento appena creato con i dati utente popolati per mostrarlo subito
     const commentoCompleto = await Commento.findById(nuovoCommento._id).populate('utenteId', 'nome username');
     res.status(201).json(commentoCompleto);
   } catch (errore) {
@@ -268,7 +245,6 @@ app.post('/api/commenti', async (req, res) => {
   }
 });
 
-// PUT: Modifica testo commento
 app.put('/api/commenti/:id', async (req, res) => {
   try {
     const { utenteId, testo } = req.body;
@@ -277,19 +253,17 @@ app.put('/api/commenti/:id', async (req, res) => {
     const commentoTrovato = await Commento.findById(req.params.id);
     if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
     
-    // Controllo sicurezza: solo l'autore può modificare
     if (commentoTrovato.utenteId.toString() !== utenteId) return res.status(403).json({ message: "Non autorizzato." });
 
     commentoTrovato.testo = testo.trim();
     const commentoAggiornato = await commentoTrovato.save();
-    await commentoAggiornato.populate('utenteId', 'nome username'); // Ripopola per il frontend
+    await commentoAggiornato.populate('utenteId', 'nome username'); 
     res.json(commentoAggiornato);
   } catch (errore) {
     res.status(400).json({ message: errore.message });
   }
 });
 
-// PUT: Aggiungi/Rimuovi Like (Toggle). l'azione di cliccare il toggle viene gestito dal frontend.
 app.put('/api/commenti/:id/like', async (req, res) => {
   try {
     const { utenteId } = req.body;
@@ -297,13 +271,11 @@ app.put('/api/commenti/:id/like', async (req, res) => {
     const commentoTrovato = await Commento.findById(req.params.id);
     if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
 
-    // Controlla se l'utente ha già messo like
     const indiceMiPiace = commentoTrovato.like.indexOf(utenteId);
-    if (indiceMiPiace === -1) commentoTrovato.like.push(utenteId); // Se no, aggiungi
-    else commentoTrovato.like.splice(indiceMiPiace, 1); // Se sì, rimuovi (splice)
+    if (indiceMiPiace === -1) commentoTrovato.like.push(utenteId); 
+    else commentoTrovato.like.splice(indiceMiPiace, 1); 
 
     const commentoAggiornato = await commentoTrovato.save();
-    // Popola i dati necessari per aggiornare la UI
     await commentoAggiornato.populate('utenteId', 'nome username');
     await commentoAggiornato.populate('like', '_id');
     res.json(commentoAggiornato);
@@ -312,7 +284,6 @@ app.put('/api/commenti/:id/like', async (req, res) => {
   }
 });
 
-// DELETE: Utente elimina il proprio commento
 app.delete('/api/commenti/:id', async (req, res) => {
   try {
     const { utenteId } = req.body;
@@ -320,10 +291,8 @@ app.delete('/api/commenti/:id', async (req, res) => {
     const commentoTrovato = await Commento.findById(req.params.id);
     if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
     
-    // Controllo Autore
     if (commentoTrovato.utenteId.toString() !== utenteId) return res.status(403).json({ message: "Non autorizzato." });
 
-    // Elimina eventuali risposte figlie
     await Commento.deleteMany({ parentCommentoId: commentoTrovato._id });
     await commentoTrovato.deleteOne();
     res.json({ message: "Commento eliminato." });
@@ -333,7 +302,7 @@ app.delete('/api/commenti/:id', async (req, res) => {
 });
 
 // 6. AVVIO DEL SERVER
-const PORTA = process.env.PORT || 5001; // Usa la porta nel .env oppure la 5001 di default. Nel nostro caso va in quella di default
-app.listen(PORTA, () => { //Questi sono i 2 argomenti che accetta.
+const PORTA = process.env.PORT || 5001; 
+app.listen(PORTA, () => { 
   console.log(`Server avviato su http://localhost:${PORTA}`);
 });
