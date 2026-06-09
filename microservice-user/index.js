@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 const Utente = require('./models/Utente');
+const { connectRabbitMQ, publishUserDeleted } = require('./rabbitmq');
 
 const app = express();
 
@@ -10,7 +11,10 @@ app.use(cors());
 app.use(express.json());
 
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB Connesso - Microservizio User'))
+  .then(() => {
+    console.log('MongoDB Connesso - Microservizio User');
+    connectRabbitMQ();
+  })
   .catch(errore => console.error('Errore connessione DB User:', errore));
 
 // GET: lista utenti per admin
@@ -105,6 +109,13 @@ app.delete('/api/user/:id', async (req, res) => {
     }
 
     await Utente.findByIdAndDelete(idUtente);
+
+    // Pubblica il messaggio sulla coda RabbitMQ
+    try {
+      await publishUserDeleted(idUtente);
+    } catch (rabbitErr) {
+      console.error(`[RABBITMQ] Errore nell'invio della notifica di cancellazione per l'utente ${idUtente}:`, rabbitErr.message);
+    }
 
     res.json({ msg: 'Profilo eliminato.' });
   } catch (errore) {

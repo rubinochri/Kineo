@@ -59,6 +59,9 @@ services:
     container_name: kineo_user
     environment:
       - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - rabbitmq
     networks:
       - kineo_net
 
