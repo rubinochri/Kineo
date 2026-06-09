@@ -14,6 +14,7 @@ services:
     container_name: kineo_auth
     environment:
       - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0
+      - RABBITMQ_URL=amqp://rabbitmq:5672
     networks:
       - kineo_net
 
@@ -38,6 +39,18 @@ services:
     container_name: kineo_commenti
     environment:
       - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - rabbitmq
+    networks:
+      - kineo_net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - kineo_net
 
@@ -65,6 +78,7 @@ services:
       - dizionario
       - catalogo
       - commenti
+      - rabbitmq
 
 networks:
   kineo_net:

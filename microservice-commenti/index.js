@@ -6,6 +6,7 @@ require('dotenv').config();
 const Commento = require('./models/Commento');
 const Utente = require('./models/Utente');
 const Video = require('./models/Video');
+const { connectRabbitMQ } = require('./rabbitmq');
 
 const app = express();
 app.use(cors());
@@ -17,7 +18,10 @@ app.use((req, res, next) => {
 });
 
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB Connesso - Microservizio Commenti'))
+  .then(() => {
+    console.log('MongoDB Connesso - Microservizio Commenti');
+    connectRabbitMQ();
+  })
   .catch(errore => console.error('Errore connessione DB Commenti:', errore));
 
 // --- ROTTE ADMIN ---
