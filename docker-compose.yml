@@ -54,6 +54,15 @@ services:
     networks:
       - kineo_net
 
+  user:
+    build: ./microservice-user
+    container_name: kineo_user
+    environment:
+      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0
+    networks:
+      - kineo_net
+
+
   kong:
     image: kong:3.6.1-ubuntu
     container_name: kineo_gateway
@@ -78,7 +87,9 @@ services:
       - dizionario
       - catalogo
       - commenti
+      - user
       - rabbitmq
+      
 
 networks:
   kineo_net:
