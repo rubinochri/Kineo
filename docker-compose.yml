@@ -17,6 +17,14 @@ services:
     networks:
       - kineo_net
 
+  catalogo:
+    build: ./microservice-catalogo
+    container_name: kineo_catalogo
+    environment:
+      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0
+    networks:
+      - kineo_net
+
   kong:
     image: kong:3.6.1-ubuntu
     container_name: kineo_gateway
@@ -38,6 +46,7 @@ services:
     depends_on:
       - monolith
       - dizionario
+      - catalogo
 
 networks:
   kineo_net:

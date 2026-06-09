@@ -1,4 +1,5 @@
 _format_version: "3.0"
+
 services:
   - name: kineo-dizionario
     url: http://dizionario:5002
@@ -7,9 +8,18 @@ services:
         paths:
           - /api/translate
         strip_path: false
+
       - name: route-dizionario-utente
         paths:
-          - ~/api/user/.*/dizionario  # Regex per gestire ID dinamici
+          - ~/api/user/.*/dizionario
+        strip_path: false
+
+  - name: kineo-catalogo
+    url: http://catalogo:5003
+    routes:
+      - name: route-catalogo
+        paths:
+          - /api/videos
         strip_path: false
 
   - name: kineo-monolith
