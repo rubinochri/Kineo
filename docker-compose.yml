@@ -5,7 +5,7 @@ services:
     build: ./microservice-auth
     container_name: kineo_auth
     environment:
-      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_auth?retryWrites=true&w=majority&appName=Cluster0
+      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_auth_db?retryWrites=true&w=majority&appName=Cluster0
       - RABBITMQ_URL=amqp://rabbitmq:5672
     networks:
       - kineo_net
@@ -56,7 +56,7 @@ services:
     build: ./microservice-user
     container_name: kineo_user
     environment:
-      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_auth?retryWrites=true&w=majority&appName=Cluster0
+      - MONGODB_URI=mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo_user_db?retryWrites=true&w=majority&appName=Cluster0
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on:
       - rabbitmq
