@@ -103,9 +103,12 @@ app.delete('/api/admin/comments/:id', async (req, res) => {
 // GET: Recupera tutti i commenti scritti da un utente specifico
 app.get('/api/user/:id/commenti', async (req, res) => {
   try {
-    const { id } = req.params;
+    const idUtente = req.headers['x-user-id'];
+    if (!idUtente) {
+      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+    }
     
-    const commenti = await Commento.find({ utenteId: id })
+    const commenti = await Commento.find({ utenteId: idUtente })
       .populate('videoId', 'titolo') 
       .sort({ dataCreazione: -1 }); 
 
@@ -170,8 +173,10 @@ app.get('/api/commenti/video/:videoId', async (req, res) => {
 // POST: Creazione nuovo commento o risposta
 app.post('/api/commenti', async (req, res) => {
   try {
-    const { utenteId, videoId, testo, parentCommentoId } = req.body;
-    if (!utenteId || !videoId || !testo) return res.status(400).json({ message: "Dati mancanti." });
+    const { videoId, testo, parentCommentoId } = req.body;
+    const utenteId = req.headers['x-user-id'];
+    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id mancante." });
+    if (!videoId || !testo) return res.status(400).json({ message: "Dati mancanti." });
 
     const nuovoCommento = new Commento({
       utenteId, 
@@ -196,8 +201,10 @@ app.post('/api/commenti', async (req, res) => {
 // PUT: Modifica del testo di un commento esistente (solo autore)
 app.put('/api/commenti/:id', async (req, res) => {
   try {
-    const { utenteId, testo } = req.body;
-    if (!utenteId || testo === undefined) return res.status(400).json({ message: "Dati mancanti." });
+    const { testo } = req.body;
+    const utenteId = req.headers['x-user-id'];
+    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id mancante." });
+    if (testo === undefined) return res.status(400).json({ message: "Dati mancanti." });
 
     const commentoTrovato = await Commento.findById(req.params.id);
     if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
@@ -220,8 +227,8 @@ app.put('/api/commenti/:id', async (req, res) => {
 // PUT: Gestione like (aggiungi/rimuovi like al commento)
 app.put('/api/commenti/:id/like', async (req, res) => {
   try {
-    const { utenteId } = req.body;
-    if (!utenteId) return res.status(400).json({ message: "Utente mancante." });
+    const utenteId = req.headers['x-user-id'];
+    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id mancante." });
     const commentoTrovato = await Commento.findById(req.params.id);
     if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
 
@@ -245,8 +252,8 @@ app.put('/api/commenti/:id/like', async (req, res) => {
 // DELETE: Eliminazione di un commento e risposte (solo autore)
 app.delete('/api/commenti/:id', async (req, res) => {
   try {
-    const { utenteId } = req.body;
-    if (!utenteId) return res.status(400).json({ message: "Utente mancante." });
+    const utenteId = req.headers['x-user-id'];
+    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id mancante." });
     const commentoTrovato = await Commento.findById(req.params.id);
     if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
     

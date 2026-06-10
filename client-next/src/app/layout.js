@@ -1,4 +1,5 @@
 import "./globals.css";
+import AxiosConfig from "../components/AxiosConfig";
 
 export const metadata = {
   title: "Kineo",
@@ -9,6 +10,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
+        <AxiosConfig />
         {children}
       </body>
     </html>

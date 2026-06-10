@@ -119,6 +119,7 @@ function Dashboard() {
   // --- LOGOUT MODIFICATO (VAI ALLA HOME) ---
   const gestisciLogout = () => {
     localStorage.removeItem('userData'); // Pulisce i dati
+    localStorage.removeItem('token');
     router.push('/'); // Reindirizza alla Home
   };
 

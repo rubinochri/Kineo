@@ -33,7 +33,11 @@ app.get('/api/users', async (req, res) => {
 // GET: profilo utente
 app.get('/api/user/:id', async (req, res) => {
   try {
-    const utenteTrovato = await Utente.findById(req.params.id);
+    const idUtente = req.headers['x-user-id'];
+    if (!idUtente) {
+      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+    }
+    const utenteTrovato = await Utente.findById(idUtente);
 
     if (!utenteTrovato) {
       return res.status(404).json({ msg: 'Utente non trovato.' });
@@ -56,6 +60,10 @@ app.get('/api/user/:id', async (req, res) => {
 // PUT: modifica profilo utente
 app.put('/api/user/:id', async (req, res) => {
   try {
+    const idUtente = req.headers['x-user-id'];
+    if (!idUtente) {
+      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+    }
     const { nome, cognome, username, email } = req.body;
 
     if (!nome || !cognome || !username || !email) {
@@ -64,7 +72,7 @@ app.put('/api/user/:id', async (req, res) => {
 
     const emailEsistente = await Utente.findOne({
       email,
-      _id: { $ne: req.params.id }
+      _id: { $ne: idUtente }
     });
 
     if (emailEsistente) {
@@ -72,7 +80,7 @@ app.put('/api/user/:id', async (req, res) => {
     }
 
     const utenteAggiornato = await Utente.findByIdAndUpdate(
-      req.params.id,
+      idUtente,
       { nome, cognome, username, email },
       { new: true, runValidators: true }
     );
@@ -100,7 +108,10 @@ app.put('/api/user/:id', async (req, res) => {
 // DELETE: elimina profilo utente
 app.delete('/api/user/:id', async (req, res) => {
   try {
-    const idUtente = req.params.id;
+    const idUtente = req.headers['x-user-id'];
+    if (!idUtente) {
+      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+    }
 
     const utenteDaEliminare = await Utente.findById(idUtente);
 
