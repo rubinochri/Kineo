@@ -40,7 +40,7 @@ export default function Login() {
         if (datiUtente.ruolo?.toLowerCase() === 'admin') {
           window.location.href = '/admin'; 
         } else {
-          router.push('/catalogo'); 
+          window.location.href = '/catalogo'; 
         }
       }, 1500);
 

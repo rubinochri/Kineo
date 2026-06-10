@@ -1,0 +1,322 @@
+/* src/components/VideoCard.css */
+
+/* --- CONTAINER GENERALE --- */
+.card-container {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  font-family: 'Inter', sans-serif;
+  margin-bottom: 40px;
+}
+
+/* --- PLAYER WRAPPER --- */
+.kineo-player-wrapper {
+  position: relative;
+  background-color: #000;
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+  /* Assicura che i figli assoluti si riferiscano a questo box */
+  width: 100%; 
+}
+
+/* Bottone Fullscreen */
+.kineo-fullscreen-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+}
+
+.kineo-fullscreen-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+/* --- SOTTOTITOLI INTERATTIVI (FIX DEFINITIVO) --- */
+.kineo-subtitle-overlay {
+  position: absolute;
+  bottom: 10%;
+  
+  /* TECNICA CENTRATURA ASSOLUTA */
+  left: 50%; 
+  transform: translateX(-50%); /* Sposta indietro del 50% della propria larghezza -> CENTRO ESATTO */
+  
+  width: auto;      /* La larghezza si adatta al testo */
+  max-width: 90%;   /* Non sfora mai lo schermo */
+  
+  display: flex;
+  justify-content: center;
+  
+  pointer-events: none;    /* Click passante */
+  z-index: 10;
+}
+
+.kineo-active-subtitle {
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  padding: 10px 24px;
+  border-radius: 12px;
+  
+  color: #fff;
+  font-size: 1.15rem;
+  line-height: 1.5;
+  text-align: center; /* Centra il testo se va a capo */
+  
+  pointer-events: auto; /* Riabilita il click sulle parole */
+  transition: transform 0.2s ease;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+.kineo-active-subtitle:hover {
+  transform: scale(1.02);
+}
+
+/* Parole singole */
+.kineo-word {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+  white-space: pre-wrap; /* Mantiene gli spazi corretti tra le parole */
+}
+
+.kineo-word:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fbbf24;
+}
+
+/* Token dal Database */
+.kineo-db-token {
+  cursor: pointer;
+  color: #e9fb24;
+  font-weight: bold;
+  border-bottom: 2px dashed #fbbf24;
+  margin: 0 4px;
+}
+
+.kineo-db-token:hover {
+  background-color: rgba(251, 191, 36, 0.2);
+}
+
+/* --- TOOLTIP (Dizionario) --- */
+.kineo-tooltip-container {
+  /* POSIZIONAMENTO 'FIXED' */
+  position: fixed; /* Si riferisce alla finestra del browser, non al video */
+  bottom: 30px;    /* Margine dal fondo schermo */
+  right: 30px;     /* Margine da destra schermo */
+  
+  /* RESET POSIZIONI PRECEDENTI */
+  top: auto;
+  left: auto;
+  transform: none;
+  
+  /* DIMENSIONI E STILE */
+  width: 300px;
+  background: rgba(255, 255, 255, 0.98); /* Sfondo quasi solido per leggibilità sullo scuro */
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  border-radius: 12px;
+  
+  /* ELEVAZIONE ALTA */
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5); /* Ombra forte per staccare dal nero */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  
+  /* Z-INDEX MASSIMO */
+  z-index: 9999; /* Assicura che stia sopra a tutto il resto della pagina */
+  
+  animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Animazione che sale dal basso */
+@keyframes slideUpFade {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Animazione di entrata laterale morbida */
+@keyframes slideInCorner {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Opzionale: Riduci leggermente il testo interno se necessario */
+.kineo-tooltip-container h4, 
+.kineo-tooltip-container p {
+  margin-bottom: 8px; /* Meno spazio tra gli elementi */
+}
+
+/* Animazione più fluida dall'alto */
+@keyframes slideDownFade {
+  from { 
+    opacity: 0; 
+    transform: translate(-50%, -20px) scale(0.95); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translate(-50%, 0) scale(1); 
+  }
+}
+
+/* --- SEZIONE COMMENTI --- */
+.comments-section {
+  padding: 24px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.comments-section h3 {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  color: #1e293b;
+}
+
+.comment-input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.comment-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.comment-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.2s;
+}
+
+.btn-primary {
+  background-color: #4f46e5;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.btn-primary:hover {
+  background-color: #4338ca;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.single-comment {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.comment-header strong {
+  color: #1e293b;
+}
+
+.comment-body {
+  color: #334155;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.single-comment button {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.single-comment button:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.reply-comment {
+  margin-top: 10px;
+  background: #f8fafc;
+  border: none;
+  border-left: 3px solid #cbd5e1;
+  border-radius: 0 8px 8px 0;
+}
+
+/* --- BOTTONE SALVA STELLA (Dizionario Tooltip) --- */
+.bottone-salva-stella {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  font-size: 1.8rem;
+  background: transparent;
+  line-height: 1;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.bottone-salva-stella.non-salvata {
+  color: #fbc02d;
+}
+
+.bottone-salva-stella.non-salvata:hover {
+  background-color: rgba(251, 192, 45, 0.12);
+}
+
+.bottone-salva-stella.salvata {
+  color: #fbc02d;
+  background-color: transparent;
+}
+
+.bottone-salva-stella.salvata:hover {
+  background-color: rgba(251, 192, 45, 0.12);
+}
