@@ -19,11 +19,12 @@ async function fetchUserProfiles(userIds) {
     uniqueIds.map(async (id) => {
       try {
         const response = await axios.get(`${USER_SERVICE_URL}/api/user/${id}`);
+        console.log(`[API-COMPOSITION] Risposta da user-service per ID ${id}:`, JSON.stringify(response.data));
         profiles[id] = {
-          _id: response.data.id || id,
-          id: response.data.id || id,
-          nome: response.data.nome || 'Utente',
-          username: response.data.username || 'Utente',
+          _id: response.data.id || response.data._id || id,
+          id: response.data.id || response.data._id || id,
+          nome: response.data.nome || response.data.name || 'Utente',
+          username: response.data.username || response.data.name || 'Utente',
           email: response.data.email || ''
         };
       } catch (err) {
@@ -106,7 +107,8 @@ app.get('/api/comments/all', async (req, res) => {
     const mappedCommenti = commenti.map(c => {
       const cObj = c.toObject();
       const uId = cObj.utenteId ? cObj.utenteId.toString() : '';
-      cObj.utenteId = profiles[uId] || { _id: cObj.utenteId, id: cObj.utenteId, username: 'Utente', email: '' };
+      cObj.utenteId = profiles[uId] || { _id: cObj.utenteId, id: cObj.utenteId, nome: 'Utente', username: 'Utente', email: '' };
+      cObj.utente = cObj.utenteId;
       
       const vId = cObj.videoId ? cObj.videoId.toString() : '';
       cObj.videoId = videos[vId] || { _id: cObj.videoId, id: cObj.videoId, titolo: 'Video rimosso' };
@@ -194,12 +196,14 @@ app.get('/api/commenti/video/:videoId', async (req, res) => {
     const commentiComposti = commentiConRisposte.map(c => {
       const uId = c.utenteId ? c.utenteId.toString() : '';
       c.utenteId = profiles[uId] || { _id: c.utenteId, id: c.utenteId, nome: 'Utente', username: 'Utente' };
+      c.utente = c.utenteId;
       c.like = (c.like || []).map(id => id ? id.toString() : null).filter(Boolean);
       
       if (c.risposte) {
         c.risposte = c.risposte.map(r => {
           const ruId = r.utenteId ? r.utenteId.toString() : '';
           r.utenteId = profiles[ruId] || { _id: r.utenteId, id: r.utenteId, nome: 'Utente', username: 'Utente' };
+          r.utente = r.utenteId;
           r.like = (r.like || []).map(id => id ? id.toString() : null).filter(Boolean);
           return r;
         });
@@ -220,8 +224,8 @@ app.get('/api/commenti/video/:videoId', async (req, res) => {
 app.post('/api/commenti', async (req, res) => {
   try {
     const { videoId, testo, parentCommentoId } = req.body;
-    const utenteId = req.headers['x-user-id'];
-    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id mancante." });
+    const utenteId = req.headers['x-user-id'] || req.body.utenteId;
+    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id o utenteId mancante." });
     if (!videoId || !testo) return res.status(400).json({ message: "Dati mancanti." });
 
     const nuovoCommento = new Commento({
@@ -237,6 +241,7 @@ app.post('/api/commenti', async (req, res) => {
     const profiles = await fetchUserProfiles([commentoCompletoObj.utenteId]);
     const uId = commentoCompletoObj.utenteId ? commentoCompletoObj.utenteId.toString() : '';
     commentoCompletoObj.utenteId = profiles[uId] || { _id: commentoCompletoObj.utenteId, id: commentoCompletoObj.utenteId, nome: 'Utente', username: 'Utente' };
+    commentoCompletoObj.utente = commentoCompletoObj.utenteId;
     commentoCompletoObj.like = (commentoCompletoObj.like || []).map(id => id ? id.toString() : null).filter(Boolean);
     res.status(201).json(commentoCompletoObj);
   } catch (errore) {
@@ -249,8 +254,8 @@ app.post('/api/commenti', async (req, res) => {
 app.put('/api/commenti/:id', async (req, res) => {
   try {
     const { testo } = req.body;
-    const utenteId = req.headers['x-user-id'];
-    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id mancante." });
+    const utenteId = req.headers['x-user-id'] || req.body.utenteId;
+    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id o utenteId mancante." });
     if (testo === undefined) return res.status(400).json({ message: "Dati mancanti." });
 
     const commentoTrovato = await Commento.findById(req.params.id);
@@ -264,6 +269,7 @@ app.put('/api/commenti/:id', async (req, res) => {
     const profiles = await fetchUserProfiles([commentoAggiornatoObj.utenteId]);
     const uId = commentoAggiornatoObj.utenteId ? commentoAggiornatoObj.utenteId.toString() : '';
     commentoAggiornatoObj.utenteId = profiles[uId] || { _id: commentoAggiornatoObj.utenteId, id: commentoAggiornatoObj.utenteId, nome: 'Utente', username: 'Utente' };
+    commentoAggiornatoObj.utente = commentoAggiornatoObj.utenteId;
     commentoAggiornatoObj.like = (commentoAggiornatoObj.like || []).map(id => id ? id.toString() : null).filter(Boolean);
     res.json(commentoAggiornatoObj);
   } catch (errore) {
@@ -275,8 +281,8 @@ app.put('/api/commenti/:id', async (req, res) => {
 // PUT: Gestione like (aggiungi/rimuovi like al commento)
 app.put('/api/commenti/:id/like', async (req, res) => {
   try {
-    const utenteId = req.headers['x-user-id'];
-    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id mancante." });
+    const utenteId = req.headers['x-user-id'] || req.body.utenteId;
+    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id o utenteId mancante." });
     const commentoTrovato = await Commento.findById(req.params.id);
     if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
 
@@ -289,6 +295,7 @@ app.put('/api/commenti/:id/like', async (req, res) => {
     const profiles = await fetchUserProfiles([commentoAggiornatoObj.utenteId]);
     const uId = commentoAggiornatoObj.utenteId ? commentoAggiornatoObj.utenteId.toString() : '';
     commentoAggiornatoObj.utenteId = profiles[uId] || { _id: commentoAggiornatoObj.utenteId, id: commentoAggiornatoObj.utenteId, nome: 'Utente', username: 'Utente' };
+    commentoAggiornatoObj.utente = commentoAggiornatoObj.utenteId;
     commentoAggiornatoObj.like = (commentoAggiornatoObj.like || []).map(id => id ? id.toString() : null).filter(Boolean);
     res.json(commentoAggiornatoObj);
   } catch (errore) {
@@ -300,8 +307,8 @@ app.put('/api/commenti/:id/like', async (req, res) => {
 // DELETE: Eliminazione di un commento e risposte (solo autore)
 app.delete('/api/commenti/:id', async (req, res) => {
   try {
-    const utenteId = req.headers['x-user-id'];
-    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id mancante." });
+    const utenteId = req.headers['x-user-id'] || req.body.utenteId;
+    if (!utenteId) return res.status(401).json({ message: "Non autorizzato: X-User-Id o utenteId mancante." });
     const commentoTrovato = await Commento.findById(req.params.id);
     if (!commentoTrovato) return res.status(404).json({ message: "Commento non trovato." });
     

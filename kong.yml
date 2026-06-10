@@ -1,5 +1,33 @@
 _format_version: "3.0"
 
+plugins:
+  - name: cors
+    enabled: true
+    config:
+      origins:
+        - ".*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Accept-Version
+        - Content-Length
+        - Content-MD5
+        - Content-Type
+        - Date
+        - Authorization
+        - X-User-Id
+      exposed_headers:
+        - X-User-Id
+      credentials: true
+      max_age: 3600
+      preflight_continue: false
+
 services:
   - name: kineo-auth
     url: http://auth:5005
@@ -8,6 +36,9 @@ services:
         paths:
           - /api/login
           - /api/register
+        methods:
+          - POST
+          - OPTIONS
         strip_path: false
 
   - name: kineo-dizionario
@@ -16,14 +47,25 @@ services:
       - name: route-translate
         paths:
           - /api/translate
+        methods:
+          - POST
+          - OPTIONS
         strip_path: false
 
       - name: route-dizionario-utente
         paths:
           - ~/api/user/.*/dizionario
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
         strip_path: false
         plugins:
           - name: jwt
+            config:
+              run_on_preflight: false
           - name: pre-function
             config:
               access:
@@ -76,6 +118,7 @@ services:
           - /api/videos
         methods:
           - GET
+          - OPTIONS
         strip_path: false
 
       - name: rotta-catalogo-protetta
@@ -86,9 +129,12 @@ services:
           - PUT
           - PATCH
           - DELETE
+          - OPTIONS
         strip_path: false
         plugins:
           - name: jwt
+            config:
+              run_on_preflight: false
           - name: pre-function
             config:
               access:
@@ -142,9 +188,17 @@ services:
           - /api/admin/comments
           - /api/commenti
           - ~/api/user/.*/commenti
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
         strip_path: false
     plugins:
       - name: jwt
+        config:
+          run_on_preflight: false
       - name: pre-function
         config:
           access:
@@ -196,9 +250,16 @@ services:
         paths:
           - /api/users
           - ~/api/user/[^/]+$
+        methods:
+          - GET
+          - PUT
+          - DELETE
+          - OPTIONS
         strip_path: false
     plugins:
       - name: jwt
+        config:
+          run_on_preflight: false
       - name: pre-function
         config:
           access:

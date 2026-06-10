@@ -201,11 +201,24 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
       return;
     }
     try {
-        await axios.post('http://localhost:8000/api/commenti', {
+        const res = await axios.post('http://localhost:8000/api/commenti', {
             videoId: video._id,
             utenteId: idUtenteCorrente,
             testo: nuovoCommento
         });
+        const commentoCreato = res.data;
+        const utenteMock = {
+          _id: idUtenteCorrente,
+          id: idUtenteCorrente,
+          username: utenteSalvato?.username,
+          nome: utenteSalvato?.nome
+        };
+        commentoCreato.utente = commentoCreato.utente || utenteMock;
+        commentoCreato.utenteId = typeof commentoCreato.utenteId === 'object' && commentoCreato.utenteId !== null
+          ? { ...commentoCreato.utenteId, ...utenteMock }
+          : utenteMock;
+
+        setCommenti(prev => [commentoCreato, ...prev]);
         setNuovoCommento("");
         caricaCommenti(); 
     } catch (err) {
@@ -227,12 +240,34 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
     const testo = (testoRisposta[idPadre] || '').trim();
     if (!testo) return;
     try {
-      await axios.post('http://localhost:8000/api/commenti', {
+      const res = await axios.post('http://localhost:8000/api/commenti', {
         videoId: video._id,
         utenteId: idUtenteCorrente || 'guest_id',
         testo,
         parentCommentoId: idPadre
       });
+      const rispostaCreata = res.data;
+      const utenteMock = {
+        _id: idUtenteCorrente,
+        id: idUtenteCorrente,
+        username: utenteSalvato?.username,
+        nome: utenteSalvato?.nome
+      };
+      rispostaCreata.utente = rispostaCreata.utente || utenteMock;
+      rispostaCreata.utenteId = typeof rispostaCreata.utenteId === 'object' && rispostaCreata.utenteId !== null
+        ? { ...rispostaCreata.utenteId, ...utenteMock }
+        : utenteMock;
+
+      setCommenti(prev => prev.map(comm => {
+        if (comm._id === idPadre) {
+          const risposteEsistenti = comm.risposte || [];
+          return {
+            ...comm,
+            risposte: [...risposteEsistenti, rispostaCreata]
+          };
+        }
+        return comm;
+      }));
       setTestoRisposta(prev => ({ ...prev, [idPadre]: '' }));
       setRispostaVisibile(prev => ({ ...prev, [idPadre]: false }));
       caricaCommenti();
@@ -418,7 +453,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
                     return (
                     <div key={comm._id} className="single-comment">
                         <div className="comment-header">
-                            <strong>{comm.utenteId?.username || comm.utente?.username || comm.utente || "Utente"}</strong>
+                            <strong>{comm.utente?.username || comm.utente?.nome || comm.utenteId?.username || comm.utenteId?.nome || "Utente"}</strong>
                             <span>{new Date(comm.dataCreazione).toLocaleDateString()}</span>
                         </div>
 
@@ -477,7 +512,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
                               return (
                                 <div key={r._id} className="single-comment reply-comment" style={{marginBottom:10}}>
                                   <div className="comment-header">
-                                    <strong>{r.utenteId?.username || r.utente || 'Utente'}</strong>
+                                    <strong>{r.utente?.username || r.utente?.nome || r.utenteId?.username || r.utenteId?.nome || "Utente"}</strong>
                                     <span style={{marginLeft:8}}>{new Date(r.dataCreazione).toLocaleDateString()}</span>
                                   </div>
                                   <div className="comment-body">

@@ -259,7 +259,7 @@ export default function DashboardAmministratore() {
             <Tabella intestazioni={['Autore', 'Commento', 'Video', 'Data', 'Azioni']}>
               {commenti.map(c => (
                 <tr key={c._id}>
-                  <td><strong>@{c.utenteId?.username || c.utente?.username || 'Eliminato'}</strong></td>
+                  <td><strong>@{c.utente?.username || c.utente?.nome || c.utenteId?.username || c.utenteId?.nome || 'Eliminato'}</strong></td>
                   <td className="anteprima-commento">"{c.testo}"</td>
                   <td>{c.videoId?.titolo || 'Video rimosso'}</td>
                   <td>{new Date(c.dataCreazione).toLocaleDateString()}</td>

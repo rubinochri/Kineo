@@ -10,10 +10,65 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+async function migrateVideos() {
+  const oldMongoUri = 'mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0';
+  console.log('[MIGRAZIONE] Avvio della migrazione una tantum dei video dal vecchio database...');
+  
+  let oldConn;
+  try {
+    oldConn = await mongoose.createConnection(oldMongoUri).asPromise();
+    console.log('[MIGRAZIONE] Connessione al vecchio database stabilita con successo.');
+    
+    const collections = await oldConn.db.listCollections().toArray();
+    const collectionNames = collections.map(c => c.name);
+    console.log('[MIGRAZIONE] Collezioni presenti nel vecchio database:', collectionNames);
+    
+    const hasVideos = collectionNames.includes('videos');
+    const hasVideoSingular = collectionNames.includes('video');
+    
+    let oldCollectionName = 'videos';
+    if (!hasVideos && hasVideoSingular) {
+      oldCollectionName = 'video';
+    }
+    console.log(`[MIGRAZIONE] Utilizzo della collezione "${oldCollectionName}" per recuperare i video.`);
+    
+    const OldVideo = oldConn.model('Video', Video.schema, oldCollectionName);
+    const oldVideos = await OldVideo.find({});
+    console.log(`[MIGRAZIONE] Trovati ${oldVideos.length} video nel vecchio database.`);
+    
+    let migratiCount = 0;
+    let giaPresentiCount = 0;
+    
+    for (const v of oldVideos) {
+      const videoData = v.toObject ? v.toObject() : v;
+      // Controlla se esiste già nel nuovo DB
+      const esisteGia = await Video.findById(videoData._id);
+      if (!esisteGia) {
+        const nuovoVideo = new Video(videoData);
+        await nuovoVideo.save();
+        migratiCount++;
+      } else {
+        giaPresentiCount++;
+      }
+    }
+    
+    console.log(`[MIGRAZIONE] Risultato migrazione: ${migratiCount} video importati con successo, ${giaPresentiCount} già presenti.`);
+  } catch (err) {
+    console.error('[MIGRAZIONE] Errore critico durante la migrazione:', err);
+  } finally {
+    if (oldConn) {
+      await oldConn.close();
+      console.log('[MIGRAZIONE] Connessione al vecchio database chiusa.');
+    }
+  }
+}
+
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('MongoDB Connesso - Microservizio Catalogo');
     connectRabbitMQ();
+    // Esegui il travaso asincrono dei dati storici
+    await migrateVideos();
   })
   .catch(errore => console.error('Errore connessione DB Catalogo:', errore));
 
