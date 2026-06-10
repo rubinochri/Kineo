@@ -60,10 +60,21 @@ app.get('/api/user/:id', async (req, res) => {
 // PUT: modifica profilo utente
 app.put('/api/user/:id', async (req, res) => {
   try {
-    const idUtente = req.headers['x-user-id'];
-    if (!idUtente) {
+    const operatorId = req.headers['x-user-id'];
+    if (!operatorId) {
       return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
     }
+
+    const targetId = req.params.id;
+
+    // Controllo Ruolo / Autorizzazione
+    if (operatorId !== targetId) {
+      const operatore = await Utente.findById(operatorId);
+      if (!operatore || (operatore.ruolo !== 'Admin' && operatore.ruolo?.toLowerCase() !== 'admin')) {
+        return res.status(403).json({ msg: 'Non autorizzato: Permessi insufficienti.' });
+      }
+    }
+
     const { nome, cognome, username, email } = req.body;
 
     if (!nome || !cognome || !username || !email) {
@@ -72,7 +83,7 @@ app.put('/api/user/:id', async (req, res) => {
 
     const emailEsistente = await Utente.findOne({
       email,
-      _id: { $ne: idUtente }
+      _id: { $ne: targetId }
     });
 
     if (emailEsistente) {
@@ -80,7 +91,7 @@ app.put('/api/user/:id', async (req, res) => {
     }
 
     const utenteAggiornato = await Utente.findByIdAndUpdate(
-      idUtente,
+      targetId,
       { nome, cognome, username, email },
       { new: true, runValidators: true }
     );
@@ -101,6 +112,7 @@ app.put('/api/user/:id', async (req, res) => {
       }
     });
   } catch (errore) {
+    console.error("Errore modifica profilo utente:", errore);
     res.status(500).json({ msg: 'Errore server.' });
   }
 });
@@ -108,28 +120,39 @@ app.put('/api/user/:id', async (req, res) => {
 // DELETE: elimina profilo utente
 app.delete('/api/user/:id', async (req, res) => {
   try {
-    const idUtente = req.headers['x-user-id'];
-    if (!idUtente) {
+    const operatorId = req.headers['x-user-id'];
+    if (!operatorId) {
       return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
     }
 
-    const utenteDaEliminare = await Utente.findById(idUtente);
+    const targetId = req.params.id;
+
+    // Controllo Ruolo / Autorizzazione
+    if (operatorId !== targetId) {
+      const operatore = await Utente.findById(operatorId);
+      if (!operatore || (operatore.ruolo !== 'Admin' && operatore.ruolo?.toLowerCase() !== 'admin')) {
+        return res.status(403).json({ msg: 'Non autorizzato: Permessi insufficienti.' });
+      }
+    }
+
+    const utenteDaEliminare = await Utente.findById(targetId);
 
     if (!utenteDaEliminare) {
       return res.status(404).json({ msg: 'Utente non trovato.' });
     }
 
-    await Utente.findByIdAndDelete(idUtente);
+    await Utente.findByIdAndDelete(targetId);
 
     // Pubblica il messaggio sulla coda RabbitMQ
     try {
-      await publishUserDeleted(idUtente);
+      await publishUserDeleted(targetId);
     } catch (rabbitErr) {
-      console.error(`[RABBITMQ] Errore nell'invio della notifica di cancellazione per l'utente ${idUtente}:`, rabbitErr.message);
+      console.error(`[RABBITMQ] Errore nell'invio della notifica di cancellazione per l'utente ${targetId}:`, rabbitErr.message);
     }
 
     res.json({ msg: 'Profilo eliminato.' });
   } catch (errore) {
+    console.error("Errore eliminazione profilo utente:", errore);
     res.status(500).json({ msg: 'Errore server.' });
   }
 });
