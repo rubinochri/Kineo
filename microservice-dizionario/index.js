@@ -63,8 +63,11 @@ app.post('/api/translate', async (req, res) => {
 // GET: Recupera tutte le parole salvate da un utente specifico
 app.get('/api/user/:id/dizionario', async (req, res) => {
   try {
-    const { id } = req.params;
-    const listaParole = await SavedWord.find({ userId: id }).sort({ dataCreazione: -1 });
+    const idUtente = req.headers['x-user-id'];
+    if (!idUtente) {
+      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+    }
+    const listaParole = await SavedWord.find({ userId: idUtente }).sort({ dataCreazione: -1 });
     res.json(listaParole.map(mapSavedWord));
   } catch (errore) {
     console.error("Errore recupero dizionario:", errore);
@@ -75,7 +78,10 @@ app.get('/api/user/:id/dizionario', async (req, res) => {
 // POST: Aggiungi una parola al dizionario personale dell'utente
 app.post('/api/user/:id/dizionario', async (req, res) => {
   try {
-    const { id } = req.params;
+    const idUtente = req.headers['x-user-id'];
+    if (!idUtente) {
+      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+    }
     const { original, translation, type, notes, learned, originale, traduzione, lingua } = req.body;
 
     const wordOriginale = originale || original;
@@ -90,13 +96,13 @@ app.post('/api/user/:id/dizionario', async (req, res) => {
 
     // Check if the word is already saved by this user
     const esisteGia = await SavedWord.findOne({
-      userId: id,
+      userId: idUtente,
       originale: { $regex: new RegExp(`^${cleanedOriginale}$`, 'i') }
     });
     if (esisteGia) return res.status(400).json({ msg: "Parola già presente" });
 
     const nuovaParola = new SavedWord({
-      userId: id,
+      userId: idUtente,
       originale: cleanedOriginale,
       traduzione: wordTraduzione.trim(),
       lingua: wordLingua,
@@ -106,7 +112,7 @@ app.post('/api/user/:id/dizionario', async (req, res) => {
 
     await nuovaParola.save();
 
-    const paroleAggiornate = await SavedWord.find({ userId: id }).sort({ dataCreazione: -1 });
+    const paroleAggiornate = await SavedWord.find({ userId: idUtente }).sort({ dataCreazione: -1 });
     res.json(paroleAggiornate.map(mapSavedWord));
   } catch (errore) {
     console.error("Errore salvataggio parola:", errore);
@@ -117,14 +123,18 @@ app.post('/api/user/:id/dizionario', async (req, res) => {
 // DELETE: Elimina una parola dal dizionario personale
 app.delete('/api/user/:id/dizionario/:wordId', async (req, res) => {
   try {
-    const { id, wordId } = req.params;
+    const idUtente = req.headers['x-user-id'];
+    if (!idUtente) {
+      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+    }
+    const { wordId } = req.params;
     
-    const parolaEliminata = await SavedWord.findOneAndDelete({ _id: wordId, userId: id });
+    const parolaEliminata = await SavedWord.findOneAndDelete({ _id: wordId, userId: idUtente });
     if (!parolaEliminata) {
       return res.status(404).json({ msg: "Parola non trovata per questo utente." });
     }
 
-    const paroleAggiornate = await SavedWord.find({ userId: id }).sort({ dataCreazione: -1 });
+    const paroleAggiornate = await SavedWord.find({ userId: idUtente }).sort({ dataCreazione: -1 });
     res.json(paroleAggiornate.map(mapSavedWord));
   } catch (errore) {
     console.error("Errore eliminazione parola:", errore);
@@ -135,7 +145,11 @@ app.delete('/api/user/:id/dizionario/:wordId', async (req, res) => {
 // PUT: Modifica note o stato di apprendimento di una parola
 app.put('/api/user/:id/dizionario/:wordId', async (req, res) => {
   try {
-    const { id, wordId } = req.params;
+    const idUtente = req.headers['x-user-id'];
+    if (!idUtente) {
+      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+    }
+    const { wordId } = req.params;
     const { notes, learned, originale, traduzione, lingua } = req.body;
 
     const updates = {};
@@ -146,7 +160,7 @@ app.put('/api/user/:id/dizionario/:wordId', async (req, res) => {
     if (lingua !== undefined) updates.lingua = lingua;
 
     const parolaAggiornata = await SavedWord.findOneAndUpdate(
-      { _id: wordId, userId: id },
+      { _id: wordId, userId: idUtente },
       { $set: updates },
       { new: true }
     );
@@ -155,7 +169,7 @@ app.put('/api/user/:id/dizionario/:wordId', async (req, res) => {
       return res.status(404).json({ msg: "Parola non trovata per questo utente." });
     }
 
-    const paroleAggiornate = await SavedWord.find({ userId: id }).sort({ dataCreazione: -1 });
+    const paroleAggiornate = await SavedWord.find({ userId: idUtente }).sort({ dataCreazione: -1 });
     res.json(paroleAggiornate.map(mapSavedWord));
   } catch (errore) {
     console.error("Errore modifica parola:", errore);

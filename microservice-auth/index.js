@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const Utente = require('./models/Utente');
@@ -60,8 +61,20 @@ app.post('/api/login', async (req, res) => {
     const passwordCorrisponde = await bcrypt.compare(password, utenteTrovato.password);
     if (!passwordCorrisponde) return res.status(400).json({ msg: "Credenziali non valide." }); 
 
+    // Generazione JWT
+    const token = jwt.sign(
+      { 
+        id: utenteTrovato._id, 
+        ruolo: utenteTrovato.ruolo,
+        iss: 'KineoSecretKey2026'
+      },
+      'KineoSecretKey2026',
+      { expiresIn: '1d' }
+    );
+
     res.json({
       msg: "Login effettuato con successo!",
+      token,
       user: {
         id: utenteTrovato._id,
         nome: utenteTrovato.nome,

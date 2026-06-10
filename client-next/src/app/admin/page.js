@@ -56,6 +56,7 @@ export default function DashboardAmministratore() {
   const gestisciLogout = () => {
     // 1. Pulisce i dati di accesso per sicurezza
     localStorage.removeItem('userData');
+    localStorage.removeItem('token');
     // 2. Manda alla Home Page
     router.push('/');
   };

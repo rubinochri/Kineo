@@ -26,9 +26,13 @@ export default function Login() {
       const risposta = await axios.post('http://localhost:8000/api/login', datiModulo);
     
       const datiUtente = risposta.data.user;
+      const token = risposta.data.token;
       
       // Salvataggio nel localStorage (chiave 'userData' rimane in inglese per compatibilità con altre pagine)
       localStorage.setItem('userData', JSON.stringify(datiUtente));
+      if (token) {
+        localStorage.setItem('token', token);
+      }
       
       setSuccesso('Accesso effettuato! Reindirizzamento...');
 
