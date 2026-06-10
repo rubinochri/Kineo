@@ -27,6 +27,16 @@
   font-size: 0.9rem;
 }
 
+.bottone-pericolo {
+  background-color: #ef4444;
+  color: white;
+}
+
+.bottone-pericolo:hover {
+  background-color: #dc2626;
+  transform: scale(1.02);
+}
+
 .contenitore-schede {
   display: flex;
   gap: 10px;

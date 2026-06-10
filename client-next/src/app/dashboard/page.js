@@ -175,6 +175,13 @@ function Dashboard() {
   return (
     <div className="contenitore-dashboard animate-enter">
       
+      {/* TORNA AI VIDEO */}
+      <div style={{ marginBottom: '15px', textAlign: 'left' }}>
+        <button onClick={() => router.back()} className="link-indietro">
+          ← Torna indietro
+        </button>
+      </div>
+
       {/* HEADER */}
       <div className="intestazione-dashboard">
         <h2 className="titolo-gradiente titolo-lg" style={{ margin: 0, fontSize: '2rem' }}>

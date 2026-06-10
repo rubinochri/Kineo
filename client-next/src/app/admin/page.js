@@ -154,7 +154,7 @@ export default function DashboardAmministratore() {
         <div className="intestazione-admin">
           <h2 className="titolo-gradiente titolo-lg" style={{margin:0}}>Dashboard Admin</h2>
           {/* TASTO LOGOUT */}
-          <button onClick={gestisciLogout} className="bottone bottone-secondario bottone-logout">Esci</button>
+          <button onClick={gestisciLogout} className="bottone bottone-pericolo bottone-logout">Esci</button>
         </div>
 
         {/* MENU SCHEDE */}

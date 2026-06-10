@@ -285,3 +285,38 @@ button {
   border-left: 3px solid #cbd5e1;
   border-radius: 0 8px 8px 0;
 }
+
+/* --- BOTTONE SALVA STELLA (Dizionario Tooltip) --- */
+.bottone-salva-stella {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  font-size: 1.8rem;
+  background: transparent;
+  line-height: 1;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.bottone-salva-stella.non-salvata {
+  color: #fbc02d;
+}
+
+.bottone-salva-stella.non-salvata:hover {
+  background-color: rgba(251, 192, 45, 0.12);
+}
+
+.bottone-salva-stella.salvata {
+  color: #fbc02d;
+  background-color: transparent;
+}
+
+.bottone-salva-stella.salvata:hover {
+  background-color: rgba(251, 192, 45, 0.12);
+}
