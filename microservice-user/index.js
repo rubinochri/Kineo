@@ -10,10 +10,70 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+async function migrateUsers() {
+  const oldMongoUri = 'mongodb+srv://admin:KineoDB2026@cluster0.0krkoks.mongodb.net/kineo?retryWrites=true&w=majority&appName=Cluster0';
+  console.log('[MIGRAZIONE-USER] Avvio della migrazione una tantum dei profili utente...');
+  
+  let oldConn;
+  try {
+    oldConn = await mongoose.createConnection(oldMongoUri).asPromise();
+    console.log('[MIGRAZIONE-USER] Connessione al vecchio database stabilita.');
+    
+    const collections = await oldConn.db.listCollections().toArray();
+    const collectionNames = collections.map(c => c.name);
+    
+    if (!collectionNames.includes('utentes')) {
+      console.log('[MIGRAZIONE-USER] Collezione "utentes" non trovata nel vecchio DB.');
+      return;
+    }
+    
+    const OldUtente = oldConn.model('Utente', Utente.schema, 'utentes');
+    const oldUsers = await OldUtente.find({});
+    console.log(`[MIGRAZIONE-USER] Trovati ${oldUsers.length} utenti nel vecchio database.`);
+    
+    let migratiCount = 0;
+    let giaPresentiCount = 0;
+    
+    for (const u of oldUsers) {
+      const userData = u.toObject ? u.toObject() : u;
+      const esisteGia = await Utente.findById(userData._id);
+      if (!esisteGia) {
+        let ruoloFormatted = 'Studente';
+        if (userData.ruolo && userData.ruolo.toLowerCase() === 'admin') {
+          ruoloFormatted = 'Admin';
+        }
+        const nuovoProfilo = new Utente({
+          _id: userData._id,
+          nome: userData.nome || 'Utente',
+          cognome: userData.cognome || 'Utente',
+          username: userData.username || 'utente',
+          email: userData.email,
+          ruolo: ruoloFormatted,
+          dataRegistrazione: userData.dataRegistrazione || new Date()
+        });
+        await nuovoProfilo.save();
+        migratiCount++;
+      } else {
+        giaPresentiCount++;
+      }
+    }
+    
+    console.log(`[MIGRAZIONE-USER] Risultato: ${migratiCount} profili importati con successo, ${giaPresentiCount} già presenti.`);
+  } catch (err) {
+    console.error('[MIGRAZIONE-USER] Errore durante la migrazione:', err);
+  } finally {
+    if (oldConn) {
+      await oldConn.close();
+      console.log('[MIGRAZIONE-USER] Connessione temporanea chiusa.');
+    }
+  }
+}
+
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('MongoDB Connesso - Microservizio User');
     connectRabbitMQ();
+    await migrateUsers();
   })
   .catch(errore => console.error('Errore connessione DB User:', errore));
 

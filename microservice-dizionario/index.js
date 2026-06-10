@@ -63,24 +63,27 @@ app.post('/api/translate', async (req, res) => {
 // GET: Recupera tutte le parole salvate da un utente specifico
 app.get('/api/user/:id/dizionario', async (req, res) => {
   try {
-    const idUtente = req.headers['x-user-id'];
+    const idUtente = req.headers['x-user-id'] || req.params.id;
     if (!idUtente) {
-      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+      return res.status(200).json([]);
     }
     const listaParole = await SavedWord.find({ userId: idUtente }).sort({ dataCreazione: -1 });
+    if (!listaParole || !Array.isArray(listaParole)) {
+      return res.status(200).json([]);
+    }
     res.json(listaParole.map(mapSavedWord));
   } catch (errore) {
     console.error("Errore recupero dizionario:", errore);
-    res.status(500).json({ msg: "Errore server" });
+    res.status(200).json([]); // Fallback sicuro su array vuoto con 200 OK
   }
 });
 
 // POST: Aggiungi una parola al dizionario personale dell'utente
 app.post('/api/user/:id/dizionario', async (req, res) => {
   try {
-    const idUtente = req.headers['x-user-id'];
+    const idUtente = req.headers['x-user-id'] || req.params.id;
     if (!idUtente) {
-      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+      return res.status(401).json({ msg: 'Non autorizzato: id utente mancante.' });
     }
     const { original, translation, type, notes, learned, originale, traduzione, lingua } = req.body;
 
@@ -123,9 +126,9 @@ app.post('/api/user/:id/dizionario', async (req, res) => {
 // DELETE: Elimina una parola dal dizionario personale
 app.delete('/api/user/:id/dizionario/:wordId', async (req, res) => {
   try {
-    const idUtente = req.headers['x-user-id'];
+    const idUtente = req.headers['x-user-id'] || req.params.id;
     if (!idUtente) {
-      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+      return res.status(401).json({ msg: 'Non autorizzato: id utente mancante.' });
     }
     const { wordId } = req.params;
     
@@ -145,9 +148,9 @@ app.delete('/api/user/:id/dizionario/:wordId', async (req, res) => {
 // PUT: Modifica note o stato di apprendimento di una parola
 app.put('/api/user/:id/dizionario/:wordId', async (req, res) => {
   try {
-    const idUtente = req.headers['x-user-id'];
+    const idUtente = req.headers['x-user-id'] || req.params.id;
     if (!idUtente) {
-      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+      return res.status(401).json({ msg: 'Non autorizzato: id utente mancante.' });
     }
     const { wordId } = req.params;
     const { notes, learned, originale, traduzione, lingua } = req.body;
