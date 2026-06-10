@@ -33,11 +33,12 @@ app.get('/api/users', async (req, res) => {
 // GET: profilo utente
 app.get('/api/user/:id', async (req, res) => {
   try {
-    const idUtente = req.headers['x-user-id'];
-    if (!idUtente) {
-      return res.status(401).json({ msg: 'Non autorizzato: X-User-Id mancante.' });
+    const targetId = req.params.id;
+    if (!targetId) {
+      return res.status(400).json({ msg: 'Parametro ID utente mancante.' });
     }
-    const utenteTrovato = await Utente.findById(idUtente);
+
+    const utenteTrovato = await Utente.findById(targetId);
 
     if (!utenteTrovato) {
       return res.status(404).json({ msg: 'Utente non trovato.' });
@@ -53,6 +54,7 @@ app.get('/api/user/:id', async (req, res) => {
       dataRegistrazione: utenteTrovato.dataRegistrazione
     });
   } catch (errore) {
+    console.error("Errore recupero profilo utente:", errore);
     res.status(500).json({ msg: 'Errore server.' });
   }
 });
