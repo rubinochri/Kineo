@@ -44,6 +44,35 @@ async function fetchUserProfiles(userIds) {
   return profiles;
 }
 
+async function fetchVideoTitles(videoIds) {
+  if (!videoIds || videoIds.length === 0) return {};
+  
+  const uniqueIds = [...new Set(videoIds.map(id => id ? id.toString() : null).filter(Boolean))];
+  const videos = {};
+  
+  await Promise.all(
+    uniqueIds.map(async (id) => {
+      try {
+        const response = await axios.get(`http://kineo_catalogo:5003/api/videos/${id}`);
+        videos[id] = {
+          _id: id,
+          id: id,
+          titolo: response.data.titolo || 'Video'
+        };
+      } catch (err) {
+        console.error(`[API-COMPOSITION] Errore nel recupero video per id ${id}:`, err.message);
+        videos[id] = {
+          _id: id,
+          id: id,
+          titolo: 'Video rimosso'
+        };
+      }
+    })
+  );
+  
+  return videos;
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -66,16 +95,25 @@ mongoose.connect(process.env.MONGODB_URI)
 app.get('/api/comments/all', async (req, res) => {
   try {
     const commenti = await Commento.find()
-      .populate('videoId', 'titolo')          
       .sort({ dataCreazione: -1 });           
 
     const userIds = commenti.map(c => c.utenteId).filter(Boolean);
-    const profiles = await fetchUserProfiles(userIds);
+    const videoIds = commenti.map(c => c.videoId).filter(Boolean);
+
+    const [profiles, videos] = await Promise.all([
+      fetchUserProfiles(userIds),
+      fetchVideoTitles(videoIds)
+    ]);
 
     const mappedCommenti = commenti.map(c => {
       const cObj = c.toObject();
       const uId = cObj.utenteId ? cObj.utenteId.toString() : '';
       cObj.utenteId = profiles[uId] || { _id: cObj.utenteId, id: cObj.utenteId, username: 'Utente', email: '' };
+      
+      const vId = cObj.videoId ? cObj.videoId.toString() : '';
+      cObj.videoId = videos[vId] || { _id: cObj.videoId, id: cObj.videoId, titolo: 'Video rimosso' };
+      
+      cObj.like = (cObj.like || []).map(id => id ? id.toString() : null).filter(Boolean);
       return cObj;
     });
 
@@ -109,10 +147,20 @@ app.get('/api/user/:id/commenti', async (req, res) => {
     }
     
     const commenti = await Commento.find({ utenteId: idUtente })
-      .populate('videoId', 'titolo') 
       .sort({ dataCreazione: -1 }); 
 
-    res.json(commenti);
+    const videoIds = commenti.map(c => c.videoId).filter(Boolean);
+    const videos = await fetchVideoTitles(videoIds);
+
+    const mappedCommenti = commenti.map(c => {
+      const cObj = c.toObject();
+      const vId = cObj.videoId ? cObj.videoId.toString() : '';
+      cObj.videoId = videos[vId] || { _id: cObj.videoId, id: cObj.videoId, titolo: 'Video rimosso' };
+      cObj.like = (cObj.like || []).map(id => id ? id.toString() : null).filter(Boolean);
+      return cObj;
+    });
+
+    res.json(mappedCommenti);
   } catch (errore) {
     console.error("Errore fetch commenti utente:", errore);
     res.status(500).json({ msg: 'Errore server nel recupero commenti' });
@@ -123,13 +171,11 @@ app.get('/api/user/:id/commenti', async (req, res) => {
 app.get('/api/commenti/video/:videoId', async (req, res) => {
   try {
     const commentiPrincipali = await Commento.find({ videoId: req.params.videoId, parentCommentoId: null })
-      .populate('like', '_id') 
       .sort({ dataCreazione: -1 });
     
     const commentiConRisposte = await Promise.all(
       commentiPrincipali.map(async (commento) => {
         const risposte = await Commento.find({ parentCommentoId: commento._id })
-          .populate('like', '_id')
           .sort({ dataCreazione: 1 }); 
         return { ...commento.toObject(), risposte: risposte.map(r => r.toObject()) }; 
       })
@@ -150,11 +196,13 @@ app.get('/api/commenti/video/:videoId', async (req, res) => {
     const commentiComposti = commentiConRisposte.map(c => {
       const uId = c.utenteId ? c.utenteId.toString() : '';
       c.utenteId = profiles[uId] || { _id: c.utenteId, id: c.utenteId, nome: 'Utente', username: 'Utente' };
+      c.like = (c.like || []).map(id => id ? id.toString() : null).filter(Boolean);
       
       if (c.risposte) {
         c.risposte = c.risposte.map(r => {
           const ruId = r.utenteId ? r.utenteId.toString() : '';
           r.utenteId = profiles[ruId] || { _id: r.utenteId, id: r.utenteId, nome: 'Utente', username: 'Utente' };
+          r.like = (r.like || []).map(id => id ? id.toString() : null).filter(Boolean);
           return r;
         });
       }
@@ -191,6 +239,7 @@ app.post('/api/commenti', async (req, res) => {
     const profiles = await fetchUserProfiles([commentoCompletoObj.utenteId]);
     const uId = commentoCompletoObj.utenteId ? commentoCompletoObj.utenteId.toString() : '';
     commentoCompletoObj.utenteId = profiles[uId] || { _id: commentoCompletoObj.utenteId, id: commentoCompletoObj.utenteId, nome: 'Utente', username: 'Utente' };
+    commentoCompletoObj.like = (commentoCompletoObj.like || []).map(id => id ? id.toString() : null).filter(Boolean);
     res.status(201).json(commentoCompletoObj);
   } catch (errore) {
     console.error("Errore creazione commento:", errore);
@@ -217,6 +266,7 @@ app.put('/api/commenti/:id', async (req, res) => {
     const profiles = await fetchUserProfiles([commentoAggiornatoObj.utenteId]);
     const uId = commentoAggiornatoObj.utenteId ? commentoAggiornatoObj.utenteId.toString() : '';
     commentoAggiornatoObj.utenteId = profiles[uId] || { _id: commentoAggiornatoObj.utenteId, id: commentoAggiornatoObj.utenteId, nome: 'Utente', username: 'Utente' };
+    commentoAggiornatoObj.like = (commentoAggiornatoObj.like || []).map(id => id ? id.toString() : null).filter(Boolean);
     res.json(commentoAggiornatoObj);
   } catch (errore) {
     console.error("Errore modifica commento:", errore);
@@ -237,11 +287,11 @@ app.put('/api/commenti/:id/like', async (req, res) => {
     else commentoTrovato.like.splice(indiceMiPiace, 1); 
 
     const commentoAggiornato = await commentoTrovato.save();
-    await commentoAggiornato.populate('like', '_id');
     const commentoAggiornatoObj = commentoAggiornato.toObject();
     const profiles = await fetchUserProfiles([commentoAggiornatoObj.utenteId]);
     const uId = commentoAggiornatoObj.utenteId ? commentoAggiornatoObj.utenteId.toString() : '';
     commentoAggiornatoObj.utenteId = profiles[uId] || { _id: commentoAggiornatoObj.utenteId, id: commentoAggiornatoObj.utenteId, nome: 'Utente', username: 'Utente' };
+    commentoAggiornatoObj.like = (commentoAggiornatoObj.like || []).map(id => id ? id.toString() : null).filter(Boolean);
     res.json(commentoAggiornatoObj);
   } catch (errore) {
     console.error("Errore like commento:", errore);
