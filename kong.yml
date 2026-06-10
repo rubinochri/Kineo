@@ -71,10 +71,67 @@ services:
   - name: kineo-catalogo
     url: http://catalogo:5003
     routes:
-      - name: route-catalogo
+      - name: rotta-catalogo-pubblica
         paths:
           - /api/videos
+        methods:
+          - GET
         strip_path: false
+
+      - name: rotta-catalogo-protetta
+        paths:
+          - /api/videos
+        methods:
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+        strip_path: false
+        plugins:
+          - name: jwt
+          - name: pre-function
+            config:
+              access:
+                - |
+                  local token
+                  local auth_header = kong.request.get_header("Authorization")
+                  if auth_header then
+                      local m = auth_header:match("%s*[Bb][Ee][Aa][Rr][Ee][Rr]%s+(.+)")
+                      if m then
+                          token = m
+                      end
+                  end
+                  if not token then
+                      local args = kong.request.get_query()
+                      if args then
+                          token = args.jwt
+                      end
+                  end
+                  if token then
+                      local parts = {}
+                      for part in token:gmatch("[^%.]+") do
+                          table.insert(parts, part)
+                      end
+                      if #parts >= 2 then
+                          local payload_b64 = parts[2]
+                          payload_b64 = payload_b64:gsub("-", "+"):gsub("_", "/")
+                          local remainder = #payload_b64 % 4
+                          if remainder > 0 then
+                              payload_b64 = payload_b64 .. string.rep("=", 4 - remainder)
+                          end
+                          local decoded = ngx.decode_base64(payload_b64)
+                          if decoded then
+                              local cjson = require("cjson")
+                              local ok, payload = pcall(cjson.decode, decoded)
+                              if ok and payload then
+                                  local user_id = payload.id or payload._id
+                                  if user_id then
+                                      kong.service.request.set_header("X-User-Id", tostring(user_id))
+                                  end
+                              end
+                          end
+                      end
+                  end
 
   - name: kineo-commenti
     url: http://commenti:5006
