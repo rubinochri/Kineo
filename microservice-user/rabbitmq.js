@@ -13,8 +13,8 @@ async function connectRabbitMQ() {
     try {
       console.log(`[RABBITMQ-PUBLISHER] Tentativo di connessione a RabbitMQ (${retryCount + 1}/${maxRetries})...`);
       connection = await amqp.connect(rabbitmqUrl);
-      channel = await connection.createChannel();
-      console.log('[RABBITMQ-PUBLISHER] Connesso con successo a RabbitMQ!');
+      channel = await connection.createConfirmChannel();
+      console.log('[RABBITMQ-PUBLISHER] Connesso con successo a RabbitMQ (Confirm Channel)!');
       break;
     } catch (err) {
       retryCount++;
@@ -55,12 +55,21 @@ async function publishUserDeleted(userId) {
   }
 
   try {
-    // Assicura che l'exchange venga asserito prima dell'invio del messaggio
     await channel.assertExchange(EXCHANGE_NAME, 'fanout', { durable: true });
     
     const payload = JSON.stringify({ userId: userId });
-    channel.publish(EXCHANGE_NAME, '', Buffer.from(payload), { persistent: true });
-    console.log(`[RABBITMQ-PUBLISHER] Messaggio inviato con successo su exchange "${EXCHANGE_NAME}":`, payload);
+    
+    await new Promise((resolve, reject) => {
+      channel.publish(EXCHANGE_NAME, '', Buffer.from(payload), { persistent: true }, (err, ok) => {
+        if (err) {
+          console.error('[RABBITMQ-PUBLISHER] NACK ricevuto dal broker o errore di pubblicazione:', err);
+          reject(err);
+        } else {
+          console.log(`[RABBITMQ-PUBLISHER] ACK ricevuto! Messaggio confermato su exchange "${EXCHANGE_NAME}":`, payload);
+          resolve(ok);
+        }
+      });
+    });
   } catch (err) {
     console.error('[RABBITMQ-PUBLISHER] Errore nell\'invio del messaggio su exchange:', err);
     throw err;
