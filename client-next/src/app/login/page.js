@@ -37,7 +37,7 @@ export default function Login() {
       setSuccesso('Accesso effettuato! Reindirizzamento...');
 
       setTimeout(() => {
-        if (datiUtente.ruolo === 'admin') {
+        if (datiUtente.ruolo?.toLowerCase() === 'admin') {
           window.location.href = '/admin'; 
         } else {
           router.push('/catalogo'); 

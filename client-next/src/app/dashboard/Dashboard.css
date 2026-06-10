@@ -203,3 +203,20 @@
   cursor: pointer;
 }
 .bottone-outline-pericolo:hover { background: #dc2626; color: white; }
+
+/* --- LINK INDIETRO --- */
+.link-indietro {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+  text-decoration: none;
+  color: #4b5563;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.link-indietro:hover {
+  color: #2563eb;
+}

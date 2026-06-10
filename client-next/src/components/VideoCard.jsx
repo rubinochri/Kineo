@@ -332,7 +332,7 @@ function VideoCard({ video, savedWords, onToggleSave, showComments = true }) {
                  <h3 style={{margin:'0', color:'#333', fontSize: '1.3em'}}>"{tooltip.testo}"</h3>
                  <button 
                     onClick={() => onToggleSalva({ original: tooltip.testo, translation: tooltip.traduzione, type: tooltip.meta })}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.8em', color: eParolaSalvata(tooltip.testo) ? '#fbc02d' : '#e0e0e0', transition: 'color 0.2s' }}
+                    className={`bottone-salva-stella ${eParolaSalvata(tooltip.testo) ? 'salvata' : 'non-salvata'}`}
                     title={eParolaSalvata(tooltip.testo) ? "Rimuovi dal dizionario" : "Salva nel dizionario"}
                  >
                     {eParolaSalvata(tooltip.testo) ? '★' : '☆'}

@@ -1,0 +1,14 @@
+/* [project]/src/app/Home.css [app-client] (css) */
+.azioni-hero {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 2rem;
+  display: flex;
+}
+
+.bottone-arrotondato {
+  border-radius: 999px;
+}
+
+/*# sourceMappingURL=src_app_Home_50e94a0f.css.map*/
