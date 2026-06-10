@@ -43,6 +43,9 @@ export default function Registrazione() {
       
       // 3. SALVATAGGIO SESSIONE
       localStorage.setItem('userData', JSON.stringify(rispostaLogin.data.user));
+      if (rispostaLogin.data.token) {
+        localStorage.setItem('token', rispostaLogin.data.token);
+      }
 
       // 4. REINDIRIZZAMENTO
       setTimeout(() => {

@@ -35,7 +35,7 @@ export default function DashboardAmministratore() {
     }
     
     const utente = JSON.parse(utenteStringa);
-    if (utente.ruolo !== 'admin') {
+    if (utente.ruolo?.toLowerCase() !== 'admin') {
       alert('⛔️ Accesso Negato: Area riservata agli amministratori.');
       router.push('/catalogo');
       return;
