@@ -6,14 +6,12 @@ const CommentoSchema = new mongoose.Schema({
   // --- RELAZIONE: SCARICA (Foreign Key verso UTENTE) ---
   utenteId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Utente',    // Deve coincidere ESATTAMENTE con il nome in mongoose.model('Utente', ...)
     required: true
   },
 
   // --- RELAZIONE: RICEVE (Foreign Key verso VIDEO) ---
   videoId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Video',     // Deve coincidere ESATTAMENTE con il nome in mongoose.model('Video', ...)
     required: true
   },
 
@@ -30,8 +28,7 @@ const CommentoSchema = new mongoose.Schema({
 
   // --- LIKE ---
   like: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Utente'     // Array di ID utenti che hanno messo like
+    type: mongoose.Schema.Types.ObjectId
   }],
 
   // --- RISPOSTE ---

@@ -5,8 +5,6 @@ const axios = require('axios');
 require('dotenv').config();
 
 const Commento = require('./models/Commento');
-const Utente = require('./models/Utente');
-const Video = require('./models/Video');
 const { connectRabbitMQ } = require('./rabbitmq');
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://user:5007';
