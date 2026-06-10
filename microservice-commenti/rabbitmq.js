@@ -77,7 +77,7 @@ async function connectRabbitMQ() {
           channel.ack(msg);
         } catch (err) {
           console.error('[RABBITMQ-COMMENTI] Errore durante l\'elaborazione del messaggio di cancellazione utente:', err);
-          channel.nack(msg, false, false);
+          channel.nack(msg, false, true);
         }
       }
     }, { noAck: false });
@@ -116,7 +116,7 @@ async function connectRabbitMQ() {
           channel.ack(msg);
         } catch (err) {
           console.error('[RABBITMQ-COMMENTI] Errore durante l\'elaborazione del messaggio di cancellazione video:', err);
-          channel.nack(msg, false, false);
+          channel.nack(msg, false, true);
         }
       }
     }, { noAck: false });

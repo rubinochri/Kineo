@@ -72,7 +72,7 @@ async function connectRabbitMQ() {
           channel.ack(msg);
         } catch (err) {
           console.error('[RABBITMQ-DIZIONARIO] Errore durante l\'elaborazione del messaggio:', err);
-          channel.nack(msg, false, false);
+          channel.nack(msg, false, true);
         }
       }
     }, { noAck: false });
