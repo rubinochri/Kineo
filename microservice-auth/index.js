@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 require('dotenv').config();
 
 const Utente = require('./models/Utente');
@@ -37,10 +38,28 @@ app.post('/api/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, saltGenerato); 
 
     const nuovoUtente = new Utente({
-      nome, cognome, username, email, password: passwordHash 
+      email, password: passwordHash, ruolo: 'Studente'
     });
 
     await nuovoUtente.save(); 
+
+    // Sincronizzazione HTTP: inizializzazione record profilo nel microservizio user
+    try {
+      await axios.post('http://user:5007/api/user/init', {
+        id: nuovoUtente._id,
+        nome,
+        cognome,
+        username,
+        email,
+        ruolo: nuovoUtente.ruolo
+      });
+    } catch (syncErr) {
+      console.error("Errore inizializzazione profilo nel servizio user:", syncErr.message);
+      // Rollback delle credenziali per coerenza
+      await Utente.findByIdAndDelete(nuovoUtente._id);
+      return res.status(500).json({ msg: "Errore durante la creazione del profilo utente." });
+    }
+
     res.status(201).json({ msg: "Registrazione completata con successo!" });
   } catch (errore) {
     console.error("Errore server registrazione:", errore);
@@ -72,13 +91,22 @@ app.post('/api/login', async (req, res) => {
       { expiresIn: '1d' }
     );
 
+    // Recupero dinamico del profilo tramite API Composition dal microservizio user
+    let profile = { nome: '', username: '' };
+    try {
+      const profileRes = await axios.get(`http://user:5007/api/user/${utenteTrovato._id}`);
+      profile = profileRes.data;
+    } catch (profileErr) {
+      console.error("Errore recupero profilo per login:", profileErr.message);
+    }
+
     res.json({
       msg: "Login effettuato con successo!",
       token,
       user: {
         id: utenteTrovato._id,
-        nome: utenteTrovato.nome,
-        username: utenteTrovato.username,
+        nome: profile.nome || '',
+        username: profile.username || '',
         email: utenteTrovato.email,
         ruolo: utenteTrovato.ruolo
       }

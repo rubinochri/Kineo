@@ -17,6 +17,38 @@ mongoose.connect(process.env.MONGODB_URI)
   })
   .catch(errore => console.error('Errore connessione DB User:', errore));
 
+// POST: Inizializzazione profilo (chiamata inter-servizio sincrona da Auth)
+app.post('/api/user/init', async (req, res) => {
+  try {
+    const { id, nome, cognome, username, email, ruolo } = req.body;
+
+    if (!id || !nome || !cognome || !username || !email) {
+      return res.status(400).json({ msg: 'Dati incompleti per inizializzazione profilo.' });
+    }
+
+    const utenteEsistente = await Utente.findById(id);
+    if (utenteEsistente) {
+      return res.status(400).json({ msg: 'Profilo già esistente per questo ID.' });
+    }
+
+    const nuovoProfilo = new Utente({
+      _id: id,
+      nome,
+      cognome,
+      username,
+      email,
+      ruolo: ruolo || 'Studente'
+    });
+
+    await nuovoProfilo.save();
+    console.log(`[USER] Profilo inizializzato con successo per utente ${id}`);
+    res.status(201).json({ msg: 'Profilo inizializzato con successo!' });
+  } catch (errore) {
+    console.error("Errore inizializzazione profilo:", errore);
+    res.status(500).json({ msg: 'Errore server durante inizializzazione.' });
+  }
+});
+
 // GET: lista utenti per admin
 app.get('/api/users', async (req, res) => {
   try {
