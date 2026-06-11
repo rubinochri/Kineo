@@ -155,8 +155,16 @@ mongoose.connect(process.env.MONGODB_URI)
 
 // --- ROTTE ADMIN ---
 
+const richiediAdmin = (req, res, next) => {
+  const ruolo = req.headers['x-user-role'];
+  if (!ruolo || ruolo !== 'Admin') {
+    return res.status(403).json({ msg: "Accesso negato. Privilegi di amministratore richiesti." });
+  }
+  next();
+};
+
 // GET: Recupera tutti i commenti per la dashboard admin
-app.get('/api/comments/all', async (req, res) => {
+app.get('/api/comments/all', richiediAdmin, async (req, res) => {
   try {
     const commenti = await Commento.find()
       .sort({ dataCreazione: -1 });           
@@ -190,7 +198,7 @@ app.get('/api/comments/all', async (req, res) => {
 });
 
 // DELETE: Eliminazione admin di un commento e risposte associate
-app.delete('/api/admin/comments/:id', async (req, res) => {
+app.delete('/api/admin/comments/:id', richiediAdmin, async (req, res) => {
   try {
     await Commento.findByIdAndDelete(req.params.id); 
     await Commento.deleteMany({ parentCommentoId: req.params.id });

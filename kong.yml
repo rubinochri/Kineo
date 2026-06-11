@@ -22,8 +22,10 @@ plugins:
         - Date
         - Authorization
         - X-User-Id
+        - X-User-Role
       exposed_headers:
         - X-User-Id
+        - X-User-Role
       credentials: true
       max_age: 3600
       preflight_continue: false
@@ -105,6 +107,10 @@ services:
                                   if user_id then
                                       kong.service.request.set_header("X-User-Id", tostring(user_id))
                                   end
+                                  local user_role = payload.ruolo or payload.role
+                                  if user_role then
+                                      kong.service.request.set_header("X-User-Role", tostring(user_role))
+                                  end
                               end
                           end
                       end
@@ -174,6 +180,10 @@ services:
                                   if user_id then
                                       kong.service.request.set_header("X-User-Id", tostring(user_id))
                                   end
+                                  local user_role = payload.ruolo or payload.role
+                                  if user_role then
+                                      kong.service.request.set_header("X-User-Role", tostring(user_role))
+                                  end
                               end
                           end
                       end
@@ -238,6 +248,10 @@ services:
                               if user_id then
                                   kong.service.request.set_header("X-User-Id", tostring(user_id))
                               end
+                              local user_role = payload.ruolo or payload.role
+                              if user_role then
+                                  kong.service.request.set_header("X-User-Role", tostring(user_role))
+                              end
                           end
                       end
                   end
@@ -298,6 +312,10 @@ services:
                               local user_id = payload.id or payload._id
                               if user_id then
                                   kong.service.request.set_header("X-User-Id", tostring(user_id))
+                              end
+                              local user_role = payload.ruolo or payload.role
+                              if user_role then
+                                  kong.service.request.set_header("X-User-Role", tostring(user_role))
                               end
                           end
                       end
