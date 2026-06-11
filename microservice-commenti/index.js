@@ -9,6 +9,34 @@ const { connectRabbitMQ } = require('./rabbitmq');
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://user:5007';
 
+// Inizializzazione Redis Client
+const { createClient } = require('redis');
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const redisClient = createClient({
+  url: REDIS_URL
+});
+
+redisClient.on('connect', () => {
+  console.log(`[REDIS] Connessione in corso a Redis su ${REDIS_URL}...`);
+});
+
+redisClient.on('ready', () => {
+  console.log(`[REDIS] Client Redis connesso e pronto per l'uso su ${REDIS_URL}`);
+});
+
+redisClient.on('error', (err) => {
+  console.error('[REDIS] Errore riscontrato nel Client Redis:', err);
+});
+
+// Esegui la connessione all'avvio
+(async () => {
+  try {
+    await redisClient.connect();
+  } catch (err) {
+    console.error('[REDIS] Errore di connessione iniziale a Redis:', err);
+  }
+})();
+
 async function fetchUserProfiles(userIds) {
   if (!userIds || userIds.length === 0) return {};
   
@@ -17,25 +45,62 @@ async function fetchUserProfiles(userIds) {
   
   await Promise.all(
     uniqueIds.map(async (id) => {
+      const cacheKey = `user:profile:${id}`;
+      let cachedProfile = null;
+      
+      // Controlla se il profilo dell'utente è già presente in cache su Redis
       try {
-        const response = await axios.get(`${USER_SERVICE_URL}/api/user/${id}`);
-        console.log(`[API-COMPOSITION] Risposta da user-service per ID ${id}:`, JSON.stringify(response.data));
-        profiles[id] = {
-          _id: response.data.id || response.data._id || id,
-          id: response.data.id || response.data._id || id,
-          nome: response.data.nome || response.data.name || 'Utente',
-          username: response.data.username || response.data.name || 'Utente',
-          email: response.data.email || ''
-        };
+        if (redisClient.isOpen) {
+          const cachedData = await redisClient.get(cacheKey);
+          if (cachedData) {
+            cachedProfile = JSON.parse(cachedData);
+          }
+        }
       } catch (err) {
-        console.error(`[API-COMPOSITION] Errore nel recupero profilo per utente ${id}:`, err.message);
-        profiles[id] = {
-          _id: id,
-          id: id,
-          nome: 'Utente',
-          username: 'Utente',
-          email: ''
-        };
+        console.error(`[REDIS-CACHE] Errore nel recupero della chiave ${cacheKey} da Redis:`, err.message);
+      }
+      
+      if (cachedProfile) {
+        console.log(`[REDIS-CACHE] Cache Hit per profilo utente ${id}`);
+        profiles[id] = cachedProfile;
+      } else {
+        console.log(`[REDIS-CACHE] Cache Miss per profilo utente ${id}`);
+        try {
+          const response = await axios.get(`${USER_SERVICE_URL}/api/user/${id}`);
+          console.log(`[API-COMPOSITION] Risposta da user-service per ID ${id}:`, JSON.stringify(response.data));
+          
+          const profileData = {
+            _id: response.data.id || response.data._id || id,
+            id: response.data.id || response.data._id || id,
+            nome: response.data.nome || response.data.name || 'Utente',
+            username: response.data.username || response.data.name || 'Utente',
+            email: response.data.email || ''
+          };
+          
+          profiles[id] = profileData;
+          
+          // Salva su Redis con TTL 3600 secondi (1 ora)
+          try {
+            if (redisClient.isOpen) {
+              await redisClient.set(cacheKey, JSON.stringify(profileData), {
+                EX: 3600
+              });
+              console.log(`[REDIS-CACHE] Profilo utente ${id} memorizzato in Redis con TTL 3600s`);
+            }
+          } catch (cacheErr) {
+            console.error(`[REDIS-CACHE] Errore nel salvataggio in cache per utente ${id}:`, cacheErr.message);
+          }
+          
+        } catch (err) {
+          console.error(`[API-COMPOSITION] Errore nel recupero profilo per utente ${id}:`, err.message);
+          profiles[id] = {
+            _id: id,
+            id: id,
+            nome: 'Utente',
+            username: 'Utente',
+            email: ''
+          };
+        }
       }
     })
   );
