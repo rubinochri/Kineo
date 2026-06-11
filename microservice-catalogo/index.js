@@ -79,6 +79,14 @@ mongoose.connect(process.env.MONGODB_URI)
   Le rotte sono state estratte dal monolite server/index.js.
 */
 
+const richiediAdmin = (req, res, next) => {
+  const ruolo = req.headers['x-user-role'];
+  if (!ruolo || ruolo !== 'Admin') {
+    return res.status(403).json({ msg: "Accesso negato. Privilegi di amministratore richiesti." });
+  }
+  next();
+};
+
 // GET: Recupera la lista completa dei video
 app.get('/api/videos', async (req, res) => {
   try {
@@ -105,7 +113,7 @@ app.get('/api/videos/:id', async (req, res) => {
 });
 
 // POST: Crea un nuovo video
-app.post('/api/videos', async (req, res) => {
+app.post('/api/videos', richiediAdmin, async (req, res) => {
   try {
     const {
       titolo,
@@ -142,7 +150,7 @@ app.post('/api/videos', async (req, res) => {
 });
 
 // PATCH: Aggiorna parzialmente i dati di un video
-app.patch('/api/videos/:id', async (req, res) => {
+app.patch('/api/videos/:id', richiediAdmin, async (req, res) => {
   try {
     const datiAggiornamento = req.body;
 
@@ -163,7 +171,7 @@ app.patch('/api/videos/:id', async (req, res) => {
 });
 
 // PATCH: Aggiorna i segmenti/sottotitoli di un video
-app.patch('/api/videos/:id/segmenti', async (req, res) => {
+app.patch('/api/videos/:id/segmenti', richiediAdmin, async (req, res) => {
   try {
     const { segmenti } = req.body;
 
@@ -190,7 +198,7 @@ app.patch('/api/videos/:id/segmenti', async (req, res) => {
 });
 
 // DELETE: Elimina un video
-app.delete('/api/videos/:id', async (req, res) => {
+app.delete('/api/videos/:id', richiediAdmin, async (req, res) => {
   try {
     const videoEliminato = await Video.findByIdAndDelete(req.params.id);
 
