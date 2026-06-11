@@ -125,7 +125,7 @@ const Dizionario = () => {
         
         <div className="intestazione-dizionario">
             <h1 className="titolo-pagina">Il mio Dizionario</h1>
-            <Link href="/catalogo" className="link-indietro">← Torna ai Video</Link>
+            <a href="/catalogo" className="link-indietro">← Torna ai Video</a>
         </div>
 
         <div className="barra-filtri">
@@ -148,9 +148,9 @@ const Dizionario = () => {
             <div className="stato-vuoto">
                 <h3>Il dizionario è vuoto</h3>
                 <p>Guarda i video e clicca sulle parole per aggiungerle qui!</p>
-                <Link href="/catalogo">
+                <a href="/catalogo">
                     <button className="bottone-cta">Vai ai Video</button>
-                </Link>
+                </a>
             </div>
         ) : (
             <div className="lista-parole">

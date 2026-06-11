@@ -49,7 +49,7 @@ export default function Registrazione() {
 
       // 4. REINDIRIZZAMENTO
       setTimeout(() => {
-        router.push('/catalogo');
+        window.location.href = '/catalogo';
       }, 1500);
 
     } catch (err) {

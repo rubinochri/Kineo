@@ -17,6 +17,14 @@ const nextConfig = {
           source: '/admin/:path*',
           destination: 'http://localhost:3001/admin/:path*',
         },
+        {
+          source: '/catalogo',
+          destination: 'http://localhost:3002/catalogo',
+        },
+        {
+          source: '/catalogo/:path*',
+          destination: 'http://localhost:3002/catalogo/:path*',
+        },
       ],
     };
   },
