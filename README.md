@@ -509,7 +509,7 @@ Può:
 ## 8. Struttura del Progetto
 
 ```text
-KINEO-TEST-API-GATEWAY
+Kineo
 │
 ├── client-next
 │   └── Frontend principale (Shell)
@@ -582,8 +582,8 @@ Assicurarsi che Docker Desktop sia in esecuzione.
 ### Clonazione del Repository
 
 ```bash
-git clone <repository-url>
-cd KINEO-TEST-API-GATEWAY
+git clone https://github.com/rubinochri/Kineo.git
+cd <nome-cartella-progetto>
 ```
 
 ---
